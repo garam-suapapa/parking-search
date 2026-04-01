@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 제철 저녁 식단표</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#F8FAFC;color:#111827;min-height:100vh;}
+
+/* HEADER */
+#header{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid #F3F4F6;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.header-inner{display:flex;align-items:center;justify-content:space-between;max-width:900px;margin:0 auto;padding:0 20px;height:60px;}
+.header-logo{font-size:16px;font-weight:700;color:#111827;}
+.header-nav{display:flex;align-items:center;gap:12px;}
+.nav-btn{width:36px;height:36px;border:none;background:#F9FAFB;border-radius:50%;font-size:20px;color:#374151;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.nav-btn:hover{background:#F3F4F6;}
+.nav-btn:disabled{opacity:.3;cursor:default;}
+#month-label{font-size:19px;font-weight:800;color:#111827;min-width:130px;text-align:center;}
+.today-btn{font-size:13px;font-weight:600;color:#22C55E;border:1.5px solid #22C55E;background:#fff;padding:6px 14px;border-radius:20px;cursor:pointer;transition:all .15s;}
+.today-btn:hover{background:#F0FDF4;}
+
+/* CONTAINER */
+.container{max-width:900px;margin:0 auto;padding:20px 16px 40px;}
+
+/* SEASONAL BANNER */
+.seasonal-banner{background:#F0FDF4;border-radius:16px;padding:16px 20px;margin-bottom:16px;border-left:4px solid #22C55E;}
+.seasonal-title{font-size:12px;font-weight:600;color:#15803D;margin-bottom:10px;letter-spacing:.5px;}
+.chips{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid #BBF7D0;border-radius:20px;padding:6px 13px;font-size:13px;font-weight:600;color:#15803D;box-shadow:0 1px 3px rgba(0,0,0,.05);transition:transform .15s,box-shadow .15s;cursor:default;}
+.chip:hover{transform:scale(1.05);box-shadow:0 3px 8px rgba(34,197,94,.18);}
+.chip-emoji{font-size:15px;}
+
+/* LEGEND */
+.legend{display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#6B7280;}
+.legend-dot{width:10px;height:10px;border-radius:50%;}
+.ld-s{background:#22C55E;}
+.ld-e{background:#F59E0B;}
+.ld-sp{background:#8B5CF6;}
+
+/* CALENDAR */
+.cal-wrap{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07);}
+.cal-head-row{display:grid;grid-template-columns:repeat(7,1fr);background:#F9FAFB;border-bottom:1px solid #F3F4F6;}
+.cal-head-cell{padding:10px 4px;text-align:center;font-size:12px;font-weight:600;color:#9CA3AF;}
+.cal-head-cell.weekend{color:#D1D5DB;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-cell{min-height:90px;padding:10px 8px 8px;border-right:1px solid #F3F4F6;border-bottom:1px solid #F3F4F6;position:relative;transition:all .15s;}
+.cal-cell:nth-child(7n){border-right:none;}
+.cal-cell.empty,.cal-cell.weekend{background:#FAFBFC;cursor:default;}
+.cal-cell.weekend .cal-date{color:#D1D5DB;}
+.cal-cell.has-meal{cursor:pointer;}
+.cal-cell.has-meal:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.1);z-index:10;border-radius:8px;}
+
+/* type borders */
+.cal-cell.type-s{border-left:3px solid #22C55E;}
+.cal-cell.type-e{border-left:3px solid #F59E0B;}
+.cal-cell.type-sp{border-left:3px solid #8B5CF6;}
+
+.cal-date{font-size:12px;font-weight:500;color:#9CA3AF;display:block;margin-bottom:5px;}
+.cal-menu{font-size:13px;font-weight:700;color:#1A1A1A;line-height:1.4;display:block;margin-bottom:6px;word-break:keep-all;}
+.cal-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;}
+.badge-s{background:#DCFCE7;color:#15803D;}
+.badge-e{background:#FEF3C7;color:#92400E;}
+.badge-sp{background:#EDE9FE;color:#5B21B6;}
+
+.cal-note{font-size:11px;color:#9CA3AF;margin-top:4px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* recipe hint */
+.recipe-hint{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1A1A1A;color:#fff;font-size:11px;font-weight:500;padding:5px 10px;border-radius:6px;white-space:nowrap;z-index:20;pointer-events:none;}
+.recipe-hint::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1A1A1A;}
+.cal-cell.has-meal:hover .recipe-hint{display:block;}
+
+/* today */
+.cal-cell.today{background:#F0FDF4;}
+.cal-cell.today .cal-date{color:#15803D;font-weight:800;font-size:14px;}
+
+/* empty state */
+.no-meal{font-size:12px;color:#D1D5DB;text-align:center;margin-top:16px;}
+
+@media(max-width:480px){
+  .cal-cell{min-height:72px;padding:7px 5px 6px;}
+  .cal-menu{font-size:11px;}
+  .cal-badge{display:none;}
+  #month-label{font-size:16px;min-width:110px;}
+  .chip{font-size:12px;padding:5px 10px;}
+}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="header-inner">
+    <div class="header-logo">🍚 제철 식단표</div>
+    <div class="header-nav">
+      <button class="nav-btn" id="btn-prev" onclick="navigate(-1)">‹</button>
+      <span id="month-label"></span>
+      <button class="nav-btn" id="btn-next" onclick="navigate(1)">›</button>
+    </div>
+    <button class="today-btn" onclick="goToday()">오늘</button>
+  </div>
+</div>
+
+<div class="container">
+  <div id="seasonal-banner" class="seasonal-banner"></div>
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot ld-s"></span>제철 식재료</span>
+    <span class="legend-item"><span class="legend-dot ld-e"></span>간편식 (15분↓)</span>
+    <span class="legend-item"><span class="legend-dot ld-sp"></span>특식</span>
+  </div>
+  <div id="calendar" class="cal-wrap"></div>
+</div>
+
+<script>
+const MONTHS = [
+  {
+    key:'2026-04', year:2026, mo:4, label:'2026년 4월', season:'🌸 봄철 제철 식재료',
+    chips:['🌿 미나리','🌱 냉이','🌿 달래','🌿 두릅','🐙 주꾸미'],
+    meals:{
+      1:{m:'냉이 된장찌개 + 제육볶음',t:'s'},
+      2:{m:'달래 간장 비빔밥',t:'e'},
+      3:{m:'주꾸미 볶음 + 콩나물국',t:'s'},
+      6:{m:'미나리전 + 황태해장국',t:'s'},
+      7:{m:'두릅 초고추장무침 + 삼겹살구이',t:'s'},
+      8:{m:'달래 된장국 + 감자조림',t:'e'},
+      9:{m:'주꾸미 샤브샤브',t:'s'},
+      10:{m:'냉이 북어국 + 계란말이',t:'s'},
+      13:{m:'봄나물 비빔밥',t:'s'},
+      14:{m:'미나리 조개탕 + 무나물',t:'s'},
+      15:{m:'주꾸미 무침 + 된장찌개',t:'e'},
+      16:{m:'두릅나물 + 닭볶음탕',t:'s'},
+      17:{m:'달래간장 계란밥',t:'e'},
+      20:{m:'미나리 삼겹살 쌈',t:'s'},
+      21:{m:'주꾸미 볶음밥',t:'e'},
+      22:{m:'냉이 된장국 + 조기구이',t:'s'},
+      23:{m:'두릅나물밥 + 북어국',t:'s'},
+      24:{m:'미나리 해물파전 + 콩나물국',t:'s'},
+      27:{m:'주꾸미 철판볶음 + 들깨미역국',t:'s'},
+      28:{m:'달래 간장국수',t:'e'},
+      29:{m:'냉이 된장찌개 + 삼겹살구이',t:'s'},
+      30:{m:'봄나물 비빔밥 + 두부조림',t:'s'},
+    }
+  },
+  {
+    key:'2026-05', year:2026, mo:5, label:'2026년 5월', season:'🌿 초여름 제철 식재료',
+    chips:['🐍 장어','🫐 매실','🌊 멍게','🌿 취나물','🌿 두릅(끝)'],
+    meals:{
+      1:{m:'장어 양념구이 + 된장찌개',t:'s'},
+      4:{m:'매실청 닭볶음탕',t:'s'},
+      5:{m:'취나물 비빔밥 + 북어국',t:'e'},
+      6:{m:'멍게비빔밥',t:'s'},
+      7:{m:'장어 덮밥 + 된장국',t:'s'},
+      8:{m:'두릅나물 + 삼겹살구이',t:'s'},
+      11:{m:'매실 제육볶음 + 된장찌개',t:'e'},
+      12:{m:'장어 소금구이 + 쑥갓무침',t:'s'},
+      13:{m:'취나물 들깨볶음밥',t:'e'},
+      14:{m:'멍게무침 + 미역국',t:'s'},
+      15:{m:'갈치구이 + 취나물나물',t:'s'},
+      18:{m:'장어 덮밥',t:'e'},
+      19:{m:'봄채소 된장국 + 제육볶음',t:'s'},
+      20:{m:'취나물 들깨볶음 + 닭볶음',t:'s'},
+      21:{m:'계란국 + 밥',t:'e'},
+      22:{m:'멍게미역무침 + 삼겹살',t:'s'},
+      25:{m:'장어 된장구이 + 쑥갓국',t:'s'},
+      26:{m:'취나물밥 + 북어해장국',t:'s'},
+      27:{m:'매실 볶음밥',t:'e'},
+      28:{m:'멍게젓갈 + 두부찌개',t:'s'},
+      29:{m:'봄나물 비빔밥 + 미역국',t:'s'},
+    }
+  },
+  {
+    key:'2026-06', year:2026, mo:6, label:'2026년 6월', season:'☀️ 초여름 제철 식재료',
+    chips:['🥔 햇감자','🌽 옥수수','🦑 갑오징어','🦔 성게','🌿 참나물'],
+    meals:{
+      1:{m:'햇감자 조림 + 된장찌개',t:'s'},
+      2:{m:'갑오징어 고추장볶음 + 옥수수밥',t:'s'},
+      3:{m:'감자 계란국',t:'e'},
+      4:{m:'갑오징어 무침 + 삼겹살',t:'s'},
+      5:{m:'옥수수밥 + 열무김치 + 된장찌개',t:'s'},
+      8:{m:'감자 볶음 + 미역국',t:'e'},
+      9:{m:'갑오징어 된장볶음 + 콩나물무침',t:'s'},
+      10:{m:'옥수수 계란볶음밥',t:'e'},
+      11:{m:'햇감자 된장국 + 조기구이',t:'s'},
+      12:{m:'성게미역국 + 두부구이',t:'s'},
+      15:{m:'갑오징어 초무침 + 냉국수',t:'e'},
+      16:{m:'감자전 + 북어국',t:'s'},
+      17:{m:'옥수수 크림수프 + 토스트',t:'e'},
+      18:{m:'갑오징어 된장볶음 + 쌈채소',t:'s'},
+      19:{m:'감자 돼지고기찌개',t:'s'},
+      22:{m:'옥수수 삼계탕',t:'sp'},
+      23:{m:'갑오징어 파무침 + 된장국',t:'e'},
+      24:{m:'감자 수프 + 샐러드',t:'e'},
+      25:{m:'갑오징어 볶음밥 + 미역국',t:'s'},
+      26:{m:'옥수수전 + 북어국',t:'s'},
+      29:{m:'햇감자 돼지고기 된장찌개',t:'s'},
+      30:{m:'갑오징어 덮밥',t:'e'},
+    }
+  },
+  {
+    key:'2026-07', year:2026, mo:7, label:'2026년 7월', season:'🌊 한여름 제철 식재료',
+    chips:['🐟 갈치','🐍 장어','🐟 민어','🥒 오이','🌿 깻잎','🌿 도라지'],
+    meals:{
+      1:{m:'갈치구이 + 된장찌개',t:'s'},
+      2:{m:'오이냉국 + 제육볶음',t:'e'},
+      3:{m:'장어구이 + 콩나물국',t:'s'},
+      6:{m:'갈치 조림 + 깻잎무침',t:'s'},
+      7:{m:'오이냉면',t:'e'},
+      8:{m:'민어 된장찜 + 된장찌개',t:'s'},
+      9:{m:'도라지 무침 + 삼겹살구이',t:'s'},
+      10:{m:'깻잎 삼겹살 쌈밥',t:'s'},
+      13:{m:'갈치 소금구이 + 콩국수',t:'e'},
+      14:{m:'오이소박이 + 돼지불고기',t:'s'},
+      15:{m:'장어 덮밥 + 된장국',t:'s'},
+      16:{m:'민어 매운탕',t:'s'},
+      17:{m:'깻잎전 + 북어국',t:'e'},
+      20:{m:'갈치구이 + 열무비빔밥',t:'s'},
+      21:{m:'오이무침 밥',t:'e'},
+      22:{m:'도라지 들깨볶음 + 닭볶음탕',t:'s'},
+      23:{m:'민어구이 + 된장찌개',t:'s'},
+      24:{m:'장어 소금구이 + 쌈채소',t:'s'},
+      27:{m:'갈치 조림 + 콩나물국',t:'s'},
+      28:{m:'오이냉국 + 제육볶음',t:'e'},
+      29:{m:'깻잎 된장볶음 + 두부조림',t:'s'},
+      30:{m:'민어전 + 미역국',t:'s'},
+      31:{m:'복날 삼계탕',t:'sp'},
+    }
+  },
+  {
+    key:'2026-08', year:2026, mo:8, label:'2026년 8월', season:'🌻 한여름 제철 식재료',
+    chips:['🐚 전복','🐟 고등어','🐟 민어','🍅 토마토','🌿 고구마줄기','🦑 한치'],
+    meals:{
+      3:{m:'토마토 계란볶음밥',t:'e'},
+      4:{m:'전복죽',t:'sp'},
+      5:{m:'고등어구이 + 된장찌개',t:'s'},
+      6:{m:'고구마줄기 볶음 + 닭볶음탕',t:'s'},
+      7:{m:'토마토 냉국 + 삼겹살',t:'e'},
+      10:{m:'민어찜 + 된장찌개',t:'s'},
+      11:{m:'토마토 달걀국',t:'e'},
+      12:{m:'고등어 조림 + 열무김치',t:'s'},
+      13:{m:'전복 버터구이 + 된장국',t:'e'},
+      14:{m:'고구마줄기 된장국 + 제육볶음',t:'s'},
+      17:{m:'토마토 파스타',t:'e'},
+      18:{m:'고등어 소금구이 + 시금치국',t:'s'},
+      19:{m:'민어 매운탕',t:'s'},
+      20:{m:'전복 미역국',t:'s'},
+      21:{m:'고구마줄기 들깨볶음 + 삼겹살',t:'s'},
+      24:{m:'토마토 된장국 + 갈치구이',t:'e'},
+      25:{m:'고등어 무조림',t:'s'},
+      26:{m:'민어 소금구이 + 냉미역국',t:'s'},
+      27:{m:'전복 솥밥 + 미역국',t:'sp'},
+      28:{m:'고구마줄기 나물밥',t:'e'},
+      31:{m:'고등어 카레',t:'e'},
+    }
+  },
+  {
+    key:'2026-09', year:2026, mo:9, label:'2026년 9월', season:'🍂 초가을 제철 식재료',
+    chips:['🐟 전어','🐟 삼치','🦐 대하','🐙 문어','🍠 고구마','🍄 표고버섯'],
+    meals:{
+      1:{m:'전어 소금구이 + 된장찌개',t:'s'},
+      2:{m:'대하 소금구이 + 된장국',t:'s'},
+      3:{m:'고구마밥 + 북어국',t:'e'},
+      4:{m:'삼치구이 + 버섯볶음',t:'s'},
+      7:{m:'대하 찜 + 버섯된장국',t:'s'},
+      8:{m:'전어 소금구이 + 감자국',t:'s'},
+      9:{m:'고구마밥 + 시금치된장국',t:'e'},
+      10:{m:'문어 숙회 + 냉미역국',t:'s'},
+      11:{m:'삼치 조림 + 취나물무침',t:'s'},
+      14:{m:'대하 버터구이 + 버섯전골',t:'e'},
+      15:{m:'전어 소금구이 + 콩나물무침',t:'s'},
+      16:{m:'고구마줄기 된장볶음 + 갈치구이',t:'s'},
+      17:{m:'삼치 소금구이 + 들깨미역국',t:'s'},
+      18:{m:'문어 볶음 + 된장찌개',t:'s'},
+      21:{m:'대하 된장국 + 볶음밥',t:'e'},
+      22:{m:'전어 소금구이 + 콩나물무침',t:'s'},
+      23:{m:'버섯 된장전골 + 두부부침',t:'s'},
+      24:{m:'삼치 된장구이 + 시금치나물',t:'s'},
+      25:{m:'고구마 계란밥',t:'e'},
+      28:{m:'문어 숙회 + 미역국',t:'s'},
+      29:{m:'대하 버터구이 + 된장찌개',t:'e'},
+      30:{m:'전어구이 + 감자조림',t:'s'},
+    }
+  },
+  {
+    key:'2026-10', year:2026, mo:10, label:'2026년 10월', season:'🍁 가을 제철 식재료',
+    chips:['🐟 고등어','🐟 삼치','🍠 고구마','🌰 밤','🍐 배','🍎 사과','🍄 버섯'],
+    meals:{
+      1:{m:'고등어구이 + 된장찌개',t:'s'},
+      2:{m:'고구마밥 + 무생채',t:'e'},
+      5:{m:'삼치 조림 + 콩나물국',t:'s'},
+      6:{m:'고등어 무조림 + 열무나물',t:'s'},
+      7:{m:'밤 된장찌개 + 두부구이',t:'e'},
+      8:{m:'삼치구이 + 표고버섯볶음',t:'s'},
+      9:{m:'고구마 돼지고기볶음 + 미역국',t:'s'},
+      12:{m:'고등어 카레',t:'e'},
+      13:{m:'삼치 소금구이 + 버섯볶음',t:'s'},
+      14:{m:'밤밥 + 된장찌개 + 나물무침',t:'s'},
+      15:{m:'고등어 된장조림 + 시금치무침',t:'s'},
+      16:{m:'고구마 된장국 + 갈치구이',t:'s'},
+      19:{m:'삼치 된장조림 + 버섯된장국',t:'e'},
+      20:{m:'고등어 소금구이 + 무생채',t:'s'},
+      21:{m:'고구마 수프',t:'e'},
+      22:{m:'삼치 매운탕 + 콩나물무침',t:'s'},
+      23:{m:'밤 영계찜',t:'sp'},
+      26:{m:'고등어구이 + 된장찌개',t:'e'},
+      27:{m:'삼치 소금구이 + 나물비빔밥',t:'s'},
+      28:{m:'고구마줄기 된장볶음 + 두부조림',t:'s'},
+      29:{m:'밤 된장국 + 제육볶음',t:'e'},
+      30:{m:'삼치 조림 + 취나물무침',t:'s'},
+    }
+  },
+  {
+    key:'2026-11', year:2026, mo:11, label:'2026년 11월', season:'🦪 초겨울 제철 식재료',
+    chips:['🦪 굴','🦐 대하','🦪 홍합','🥬 월동무','🥬 배추(김장)','🍋 유자'],
+    meals:{
+      2:{m:'굴 된장국 + 삼겹살구이',t:'s'},
+      3:{m:'대하 소금구이 + 무나물',t:'e'},
+      4:{m:'굴전 + 북어국',t:'s'},
+      5:{m:'무 돼지고기 찜 + 된장찌개',t:'s'},
+      6:{m:'대하 찜 + 버섯볶음',t:'s'},
+      9:{m:'굴국밥',t:'s'},
+      10:{m:'무생채 비빔밥',t:'e'},
+      11:{m:'홍합탕 + 된장찌개',t:'s'},
+      12:{m:'굴 미역국 + 갈치구이',t:'s'},
+      13:{m:'배추 된장국 + 제육볶음',t:'e'},
+      16:{m:'굴 버터구이 전골 + 무나물',t:'s'},
+      17:{m:'홍합밥 + 된장찌개',t:'e'},
+      18:{m:'대하 된장구이 + 시금치나물',t:'s'},
+      19:{m:'굴 된장찌개 + 두부구이',t:'s'},
+      20:{m:'무 된장국 + 삼치구이',t:'s'},
+      23:{m:'홍합 미역국 + 삼겹살',t:'e'},
+      24:{m:'굴 비빔밥 + 콩나물국',t:'s'},
+      25:{m:'배추 돼지고기 된장찌개',t:'s'},
+      26:{m:'대하 버터볶음 + 된장국',t:'e'},
+      27:{m:'굴 소금구이 + 무생채',t:'s'},
+      30:{m:'홍합탕 + 무조림',t:'s'},
+    }
+  },
+  {
+    key:'2026-12', year:2026, mo:12, label:'2026년 12월', season:'❄️ 겨울 제철 식재료',
+    chips:['🐟 방어','🦪 굴','🦪 홍합','🐟 삼치','🥬 시래기','🍊 귤','🥬 무'],
+    meals:{
+      1:{m:'방어회 + 된장찌개',t:'s'},
+      2:{m:'홍합탕 + 무나물',t:'e'},
+      3:{m:'굴 된장국 + 삼겹살구이',t:'s'},
+      4:{m:'삼치 조림 + 시래기나물',t:'s'},
+      7:{m:'방어 무조림',t:'s'},
+      8:{m:'시래기 된장국 + 제육볶음',t:'e'},
+      9:{m:'굴전 + 콩나물국',t:'s'},
+      10:{m:'홍합밥 + 된장찌개',t:'e'},
+      11:{m:'삼치 소금구이 + 무생채',t:'s'},
+      14:{m:'방어 구이 + 시래기나물',t:'s'},
+      15:{m:'굴 미역국 + 두부구이',t:'e'},
+      16:{m:'홍합 된장찌개 + 삼겹살',t:'s'},
+      17:{m:'삼치 된장조림 + 취나물',t:'s'},
+      18:{m:'시래기 돼지고기 찜',t:'s'},
+      21:{m:'방어 소금구이 + 무된장국',t:'e'},
+      22:{m:'굴 된장찌개 + 갈치구이',t:'s'},
+      23:{m:'홍합탕 + 나물비빔밥',t:'e'},
+      24:{m:'삼치 매운탕 + 두부조림',t:'s'},
+      25:{m:'방어 된장조림 + 시래기나물',t:'s'},
+      28:{m:'굴국밥',t:'e'},
+      29:{m:'방어회 + 된장국',t:'s'},
+      30:{m:'홍합 미역국 + 삼겹살구이',t:'s'},
+      31:{m:'연말 떡국 + 잡채',t:'sp'},
+    }
+  }
+];
+
+const DAYS = ['월','화','수','목','금','토','일'];
+let idx = 0;
+
+// 오늘 날짜 확인 후 해당 월로 이동
+(function initIdx(){
+  const today = new Date();
+  const todayKey = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0');
+  const found = MONTHS.findIndex(m => m.key === todayKey);
+  if(found >= 0) idx = found;
+})();
+
+function navigate(dir){
+  idx = Math.max(0, Math.min(MONTHS.length-1, idx+dir));
+  renderMonth();
+}
+
+function goToday(){
+  const today = new Date();
+  const key = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0');
+  const found = MONTHS.findIndex(m => m.key === key);
+  if(found >= 0){ idx = found; renderMonth(); }
+}
+
+function renderMonth(){
+  const m = MONTHS[idx];
+  document.getElementById('month-label').textContent = m.label;
+  document.getElementById('btn-prev').disabled = idx === 0;
+  document.getElementById('btn-next').disabled = idx === MONTHS.length-1;
+
+  // Seasonal banner
+  const banner = document.getElementById('seasonal-banner');
+  banner.innerHTML = `
+    <div class="seasonal-title">🌿 ${m.season}</div>
+    <div class="chips">${m.chips.map(c => {
+      const parts = c.split(' ');
+      const emoji = parts[0];
+      const name = parts.slice(1).join(' ');
+      return `<span class="chip"><span class="chip-emoji">${emoji}</span>${name}</span>`;
+    }).join('')}</div>`;
+
+  // Calendar
+  renderCalendar(m);
+}
+
+function renderCalendar(m){
+  const {year, mo, meals} = m;
+  const today = new Date();
+  const todayY = today.getFullYear(), todayMo = today.getMonth()+1, todayD = today.getDate();
+  const daysInMonth = new Date(year, mo, 0).getDate();
+  const firstDow = new Date(year, mo-1, 1).getDay(); // 0=Sun
+  const firstMon = (firstDow+6)%7; // 0=Mon
+
+  const cal = document.getElementById('calendar');
+
+  // Header row
+  let html = '<div class="cal-head-row">';
+  DAYS.forEach((d,i) => {
+    html += `<div class="cal-head-cell${i>=5?' weekend':''}">${d}</div>`;
+  });
+  html += '</div><div class="cal-grid">';
+
+  // Empty cells before first
+  for(let i=0;i<firstMon;i++) html += '<div class="cal-cell empty"></div>';
+
+  // Day cells
+  for(let d=1;d<=daysInMonth;d++){
+    const dow = (firstMon+d-1)%7; // 0=Mon
+    const isWeekend = dow>=5;
+    const isToday = (year===todayY && mo===todayMo && d===todayD);
+    const meal = meals[d];
+
+    if(isWeekend){
+      html += `<div class="cal-cell weekend${isToday?' today':''}"><span class="cal-date">${d}</span></div>`;
+    } else if(meal){
+      const tc = meal.t==='s'?'type-s':meal.t==='e'?'type-e':'type-sp';
+      const bc = meal.t==='s'?'badge-s':meal.t==='e'?'badge-e':'badge-sp';
+      const bn = meal.t==='s'?'제철':meal.t==='e'?'간편식':'특식';
+      const searchName = meal.t === 's' ? meal.m.split(' + ')[0] : meal.m;
+      const q = encodeURIComponent(searchName + ' 레시피');
+      html += `<div class="cal-cell has-meal ${tc}${isToday?' today':''}" data-q="${q}">
+        <span class="recipe-hint">📖 네이버 레시피 보기</span>
+        <span class="cal-date">${d}</span>
+        <span class="cal-menu">${esc(meal.m)}</span>
+        <span class="cal-badge ${bc}">${bn}</span>
+      </div>`;
+    } else {
+      html += `<div class="cal-cell${isToday?' today':''}"><span class="cal-date">${d}</span></div>`;
+    }
+  }
+
+  // Fill remaining cells to complete last row
+  const total = firstMon + daysInMonth;
+  const remainder = total % 7;
+  if(remainder > 0){
+    for(let i=remainder;i<7;i++) html += '<div class="cal-cell empty"></div>';
+  }
+
+  html += '</div>';
+  cal.innerHTML = html;
+
+  // Click event delegation
+  cal.onclick = function(e){
+    const cell = e.target.closest('.has-meal');
+    if(cell && cell.dataset.q){
+      window.open('https://search.naver.com/search.naver?query='+cell.dataset.q, '_blank');
+    }
+  };
+}
+
+function esc(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+renderMonth();
+</script>
+</body>
+</html>
