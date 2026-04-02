@@ -41,14 +41,12 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
 
 /* CALENDAR */
 .cal-wrap{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07);}
-.cal-head-row{display:grid;grid-template-columns:repeat(7,1fr);background:#F9FAFB;border-bottom:1px solid #F3F4F6;}
+.cal-head-row{display:grid;grid-template-columns:repeat(5,1fr);background:#F9FAFB;border-bottom:1px solid #F3F4F6;}
 .cal-head-cell{padding:10px 4px;text-align:center;font-size:12px;font-weight:600;color:#9CA3AF;}
-.cal-head-cell.weekend{color:#D1D5DB;}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-grid{display:grid;grid-template-columns:repeat(5,1fr);}
 .cal-cell{min-height:90px;padding:10px 8px 8px;border-right:1px solid #F3F4F6;border-bottom:1px solid #F3F4F6;position:relative;transition:all .15s;}
-.cal-cell:nth-child(7n){border-right:none;}
-.cal-cell.empty,.cal-cell.weekend{background:#FAFBFC;cursor:default;}
-.cal-cell.weekend .cal-date{color:#D1D5DB;}
+.cal-cell:nth-child(5n){border-right:none;}
+.cal-cell.empty{background:#FAFBFC;cursor:default;}
 .cal-cell.has-meal{cursor:pointer;}
 .cal-cell.has-meal:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.1);z-index:10;border-radius:8px;}
 
@@ -109,19 +107,19 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
   /* Calendar header */
   .cal-head-cell{padding:6px 1px;font-size:10px;}
 
-  /* Calendar grid — fixed row height for uniform cells */
-  .cal-grid{grid-auto-rows:68px;}
+  /* Calendar grid — fixed row height for uniform cells (5-col, wider) */
+  .cal-grid{grid-auto-rows:80px;}
   .cal-cell{
     min-height:unset;
-    height:68px;
-    padding:4px 3px 3px;
+    height:80px;
+    padding:5px 4px 4px;
     overflow:hidden;
   }
-  .cal-date{font-size:10px;margin-bottom:2px;}
+  .cal-date{font-size:11px;margin-bottom:2px;}
   .cal-menu{
-    font-size:9.5px;
+    font-size:10.5px;
     font-weight:600;
-    line-height:1.25;
+    line-height:1.3;
     display:-webkit-box;
     -webkit-line-clamp:3;
     -webkit-box-orient:vertical;
@@ -432,7 +430,7 @@ const HOLIDAYS = {
   '2026-12-25':'크리스마스',
 };
 
-const DAYS = ['월','화','수','목','금','토','일'];
+const DAYS = ['월','화','수','목','금'];
 let idx = 0;
 
 // 오늘 날짜 확인 후 해당 월로 이동
@@ -482,24 +480,27 @@ function renderCalendar(m){
   const todayY = today.getFullYear(), todayMo = today.getMonth()+1, todayD = today.getDate();
   const daysInMonth = new Date(year, mo, 0).getDate();
   const firstDow = new Date(year, mo-1, 1).getDay(); // 0=Sun
-  const firstMon = (firstDow+6)%7; // 0=Mon
+  const firstMon = (firstDow+6)%7; // 0=Mon…6=Sun
+  // 5-col grid: offset = firstMon if Mon–Fri, else 0 (1st is Sat/Sun → start fresh)
+  const offset = firstMon < 5 ? firstMon : 0;
 
   const cal = document.getElementById('calendar');
 
-  // Header row
+  // Header row (Mon–Fri only)
   let html = '<div class="cal-head-row">';
-  DAYS.forEach((d,i) => {
-    html += `<div class="cal-head-cell${i>=5?' weekend':''}">${d}</div>`;
-  });
+  DAYS.forEach(d => { html += `<div class="cal-head-cell">${d}</div>`; });
   html += '</div><div class="cal-grid">';
 
-  // Empty cells before first
-  for(let i=0;i<firstMon;i++) html += '<div class="cal-cell empty"></div>';
+  // Empty cells before first weekday
+  for(let i=0;i<offset;i++) html += '<div class="cal-cell empty"></div>';
 
-  // Day cells
+  // Weekday cells only
+  let placed = offset;
   for(let d=1;d<=daysInMonth;d++){
-    const dow = (firstMon+d-1)%7; // 0=Mon
-    const isWeekend = dow>=5;
+    const dow = (firstMon+d-1)%7; // 0=Mon…6=Sun
+    if(dow >= 5) continue; // skip Sat & Sun
+
+    placed++;
     const isToday = (year===todayY && mo===todayMo && d===todayD);
     const meal = meals[d];
     const hKey = year+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
@@ -507,12 +508,10 @@ function renderCalendar(m){
     const holidayCls = hName ? ' holiday' : '';
     const holidayHtml = hName ? `<span class="cal-holiday-name">${esc(hName)}</span>` : '';
 
-    if(isWeekend){
-      html += `<div class="cal-cell weekend${isToday?' today':''}${holidayCls}"><span class="cal-date">${d}</span>${holidayHtml}</div>`;
-    } else if(meal){
+    if(meal){
       const tc = meal.t==='s'?'type-s':meal.t==='e'?'type-e':'type-sp';
       const bc = meal.t==='s'?'badge-s':meal.t==='e'?'badge-e':'badge-sp';
-      const bn = meal.t==='s'?'제철':meal.t==='e'?'간편':' 튀김·특식';
+      const bn = meal.t==='s'?'제철':meal.t==='e'?'간편':'튀김·특식';
       const searchName = meal.t === 's' ? meal.m.split(' + ')[0] : meal.m;
       const q = encodeURIComponent(searchName + ' 레시피');
       html += `<div class="cal-cell has-meal ${tc}${isToday?' today':''}${holidayCls}" data-q="${q}">
@@ -526,17 +525,15 @@ function renderCalendar(m){
     }
   }
 
-  // Fill remaining cells to complete last row
-  const total = firstMon + daysInMonth;
-  const remainder = total % 7;
+  // Fill trailing empty cells to complete last row
+  const remainder = placed % 5;
   if(remainder > 0){
-    for(let i=remainder;i<7;i++) html += '<div class="cal-cell empty"></div>';
+    for(let i=remainder;i<5;i++) html += '<div class="cal-cell empty"></div>';
   }
 
   html += '</div>';
   cal.innerHTML = html;
 
-  // Click event delegation
   cal.onclick = function(e){
     const cell = e.target.closest('.has-meal');
     if(cell && cell.dataset.q){
