@@ -75,6 +75,11 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
 .cal-cell.today{background:#F0FDF4;}
 .cal-cell.today .cal-date{color:#15803D;font-weight:800;font-size:14px;}
 
+/* holiday */
+.cal-cell.holiday .cal-date{color:#EF4444;}
+.cal-cell.holiday.weekend .cal-date{color:#EF4444;}
+.cal-holiday-name{display:block;font-size:9px;font-weight:600;color:#EF4444;line-height:1.2;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
 /* empty state */
 .no-meal{font-size:12px;color:#D1D5DB;text-align:center;margin-top:16px;}
 
@@ -125,6 +130,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
   }
   .cal-badge{display:none;}
   .recipe-hint{display:none!important;}
+  .cal-holiday-name{font-size:8px;}
 
   /* type border thinner on mobile */
   .cal-cell.type-s,.cal-cell.type-e,.cal-cell.type-sp{border-left-width:2px;}
@@ -410,6 +416,22 @@ const MONTHS = [
   }
 ];
 
+// 2026 공휴일 (4~12월)
+const HOLIDAYS = {
+  '2026-04-05':'식목일',
+  '2026-05-01':'근로자의 날',
+  '2026-05-05':'어린이날',
+  '2026-05-24':'석가탄신일',
+  '2026-06-06':'현충일',
+  '2026-08-15':'광복절',
+  '2026-09-23':'추석 연휴',
+  '2026-09-24':'추석',
+  '2026-09-25':'추석 연휴',
+  '2026-10-03':'개천절',
+  '2026-10-09':'한글날',
+  '2026-12-25':'크리스마스',
+};
+
 const DAYS = ['월','화','수','목','금','토','일'];
 let idx = 0;
 
@@ -480,23 +502,27 @@ function renderCalendar(m){
     const isWeekend = dow>=5;
     const isToday = (year===todayY && mo===todayMo && d===todayD);
     const meal = meals[d];
+    const hKey = year+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const hName = HOLIDAYS[hKey] || null;
+    const holidayCls = hName ? ' holiday' : '';
+    const holidayHtml = hName ? `<span class="cal-holiday-name">${esc(hName)}</span>` : '';
 
     if(isWeekend){
-      html += `<div class="cal-cell weekend${isToday?' today':''}"><span class="cal-date">${d}</span></div>`;
+      html += `<div class="cal-cell weekend${isToday?' today':''}${holidayCls}"><span class="cal-date">${d}</span>${holidayHtml}</div>`;
     } else if(meal){
       const tc = meal.t==='s'?'type-s':meal.t==='e'?'type-e':'type-sp';
       const bc = meal.t==='s'?'badge-s':meal.t==='e'?'badge-e':'badge-sp';
       const bn = meal.t==='s'?'제철':meal.t==='e'?'간편':' 튀김·특식';
       const searchName = meal.t === 's' ? meal.m.split(' + ')[0] : meal.m;
       const q = encodeURIComponent(searchName + ' 레시피');
-      html += `<div class="cal-cell has-meal ${tc}${isToday?' today':''}" data-q="${q}">
+      html += `<div class="cal-cell has-meal ${tc}${isToday?' today':''}${holidayCls}" data-q="${q}">
         <span class="recipe-hint">📖 네이버 레시피 보기</span>
-        <span class="cal-date">${d}</span>
+        <span class="cal-date">${d}</span>${holidayHtml}
         <span class="cal-menu">${esc(meal.m)}</span>
         <span class="cal-badge ${bc}">${bn}</span>
       </div>`;
     } else {
-      html += `<div class="cal-cell${isToday?' today':''}"><span class="cal-date">${d}</span></div>`;
+      html += `<div class="cal-cell${isToday?' today':''}${holidayCls}"><span class="cal-date">${d}</span>${holidayHtml}</div>`;
     }
   }
 
