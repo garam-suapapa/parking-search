@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo $ANTHROPIC_API_KEY)",
+      "Bash(node:*)",
+      "WebSearch",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(python -c \"import olefile; print\\(''olefile ok''\\)\")",
+      "Bash(python -c \"import hwpx; print\\(''hwpx ok''\\)\")",
+      "Bash(pip install:*)",
+      "Bash(python -c \"import olefile; print\\(''ok''\\)\")",
+      "Bash(python -m hwp5.hwp5txt \"1.+4월식단+만3~5세+기본형.hwp\")",
+      "Bash(python -c \":*)",
+      "Bash(python -c \"import sys; sys.stdout.buffer.write\\(sys.stdin.buffer.read\\(\\)\\)\")",
+      "Bash(iconv -f utf-8 -t utf-8)",
+      "Bash(where soffice:*)",
+      "Bash(where libreoffice:*)",
+      "Read(//c/Program Files/**)",
+      "Bash(python -c \"import docx; print\\(''ok''\\)\")",
+      "Bash(python3:*)",
+      "Bash(python -c \"from docx import Document; doc = Document\\(''1. 7월식단 만3~5세 기본형_.docx''\\); print\\(''Tables:'', len\\(doc.tables\\)\\)\")"
+    ]
+  }
+}

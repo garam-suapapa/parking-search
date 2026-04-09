@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="스케쥴 알람" />
+  <title>스케쥴 알람</title>
+  <style>
+    :root {
+      --bg: #f2f2f7;
+      --card: #ffffff;
+      --accent: #007aff;
+      --accent2: #34c759;
+      --danger: #ff3b30;
+      --warn: #ff9500;
+      --text: #1c1c1e;
+      --sub: #6d6d72;
+      --border: #e5e5ea;
+      --radius: 16px;
+      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      padding: env(safe-area-inset-top, 20px) env(safe-area-inset-right, 16px)
+               env(safe-area-inset-bottom, 20px) env(safe-area-inset-left, 16px);
+      padding-top: max(env(safe-area-inset-top), 20px);
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 0 20px;
+    }
+    header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+    #clock {
+      font-size: 14px; color: var(--sub); font-variant-numeric: tabular-nums;
+    }
+
+    /* ── NEXT ALARM BANNER ── */
+    #next-banner {
+      background: linear-gradient(135deg, #007aff, #5856d6);
+      color: #fff;
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 20px;
+      display: none;
+      box-shadow: 0 4px 16px rgba(0,122,255,0.3);
+    }
+    #next-banner .label { font-size: 12px; opacity: .75; text-transform: uppercase; letter-spacing: .5px; }
+    #next-banner .title { font-size: 20px; font-weight: 700; margin: 4px 0 2px; }
+    #next-banner .when  { font-size: 14px; opacity: .9; }
+    #next-banner .countdown {
+      margin-top: 10px; font-size: 30px; font-weight: 800;
+      font-variant-numeric: tabular-nums; letter-spacing: -1px;
+    }
+    #next-banner .actions { margin-top: 12px; display: flex; gap: 10px; }
+    #next-banner button {
+      flex: 1; padding: 9px 0; border: none; border-radius: 10px; font-size: 14px;
+      font-weight: 600; cursor: pointer; transition: opacity .15s;
+    }
+    #next-banner button:active { opacity: .75; }
+    #btn-ics { background: rgba(255,255,255,.25); color: #fff; }
+    #btn-snooze { background: rgba(255,255,255,.15); color: #fff; }
+
+    /* ── FORM CARD ── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    .card h2 { font-size: 17px; font-weight: 600; margin-bottom: 16px; }
+
+    .form-row { display: flex; flex-direction: column; gap: 12px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 13px; font-weight: 500; color: var(--sub); }
+    .field input, .field select {
+      width: 100%; padding: 12px 14px;
+      border: 1.5px solid var(--border); border-radius: 12px;
+      font-size: 16px; color: var(--text); background: var(--bg);
+      -webkit-appearance: none; appearance: none;
+      outline: none; transition: border-color .2s;
+    }
+    .field input:focus, .field select:focus { border-color: var(--accent); }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .add-btn {
+      width: 100%; padding: 14px; background: var(--accent); color: #fff;
+      border: none; border-radius: 12px; font-size: 17px; font-weight: 600;
+      cursor: pointer; margin-top: 4px; transition: opacity .15s;
+    }
+    .add-btn:active { opacity: .8; }
+
+    /* ── SCHEDULE TABLE ── */
+    .section-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px;
+    }
+    .section-header h2 { font-size: 20px; font-weight: 700; }
+    .badge {
+      background: var(--accent); color: #fff;
+      border-radius: 20px; padding: 2px 10px; font-size: 13px; font-weight: 600;
+    }
+
+    #schedule-list { display: flex; flex-direction: column; gap: 2px; }
+
+    .sched-item {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 15px 16px;
+      display: flex; align-items: center; gap: 14px;
+      box-shadow: var(--shadow);
+      position: relative; overflow: hidden;
+      transition: transform .15s;
+      animation: slideIn .25s ease;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .sched-item .dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    .sched-item .info { flex: 1; min-width: 0; }
+    .sched-item .s-title {
+      font-size: 16px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sched-item .s-time { font-size: 13px; color: var(--sub); margin-top: 2px; }
+    .sched-item .s-status {
+      font-size: 12px; font-weight: 600; padding: 4px 10px;
+      border-radius: 20px; white-space: nowrap; flex-shrink: 0;
+    }
+    .status-soon   { background: #fff3e0; color: var(--warn); }
+    .status-up     { background: #e3f2fd; color: var(--accent); }
+    .status-done   { background: #f3f3f3; color: var(--sub); }
+    .status-now    { background: #e8f5e9; color: var(--accent2); }
+
+    .del-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--sub); font-size: 20px; padding: 0 0 0 8px; flex-shrink: 0;
+      transition: color .15s;
+    }
+    .del-btn:active { color: var(--danger); }
+
+    .empty-state {
+      text-align: center; padding: 48px 0; color: var(--sub);
+    }
+    .empty-state .icon { font-size: 48px; }
+    .empty-state p { margin-top: 10px; font-size: 15px; }
+
+    /* ── ALARM MODAL ── */
+    #alarm-overlay {
+      display: none; position: fixed; inset: 0; z-index: 999;
+      background: rgba(0,0,0,.5); backdrop-filter: blur(6px);
+      align-items: center; justify-content: center; padding: 24px;
+    }
+    #alarm-overlay.show { display: flex; }
+    #alarm-modal {
+      background: var(--card); border-radius: 24px; padding: 32px 24px;
+      width: 100%; max-width: 360px; text-align: center;
+      animation: popIn .3s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(.8); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    #alarm-modal .alarm-icon { font-size: 60px; }
+    #alarm-modal h2 { font-size: 22px; font-weight: 700; margin: 12px 0 6px; }
+    #alarm-modal p  { color: var(--sub); font-size: 15px; }
+    #alarm-modal .modal-btns { display: flex; gap: 12px; margin-top: 24px; }
+    #alarm-modal button {
+      flex: 1; padding: 14px; border: none; border-radius: 14px;
+      font-size: 16px; font-weight: 600; cursor: pointer;
+    }
+    #btn-dismiss { background: var(--danger); color: #fff; }
+    #btn-snooze2 { background: var(--bg); color: var(--accent); }
+
+    /* ── IOS HINT ── */
+    #ios-hint {
+      background: var(--card); border-radius: var(--radius); padding: 16px 18px;
+      margin-bottom: 20px; box-shadow: var(--shadow);
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    #ios-hint .hint-icon { font-size: 24px; flex-shrink: 0; }
+    #ios-hint .hint-text h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    #ios-hint .hint-text p  { font-size: 12px; color: var(--sub); line-height: 1.5; }
+    #ios-hint .close-hint {
+      background: none; border: none; cursor: pointer;
+      font-size: 18px; color: var(--sub); flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <h1>📅 스케쥴 알람</h1>
+  <span id="clock">--:--:--</span>
+</header>
+
+<!-- IOS HINT -->
+<div id="ios-hint">
+  <span class="hint-icon">💡</span>
+  <div class="hint-text">
+    <h3>iOS 캘린더 알람 연동</h3>
+    <p>스케쥴 추가 후 <strong>캘린더에 추가</strong> 버튼을 누르면 iOS 캘린더에 알람이 등록됩니다.<br>
+    홈 화면에 추가하면 브라우저 알림도 동작합니다.</p>
+  </div>
+  <button class="close-hint" onclick="document.getElementById('ios-hint').remove()">✕</button>
+</div>
+
+<!-- NEXT ALARM BANNER -->
+<div id="next-banner">
+  <div class="label">다음 알람</div>
+  <div class="title" id="nb-title">—</div>
+  <div class="when"  id="nb-when">—</div>
+  <div class="countdown" id="nb-countdown">—</div>
+  <div class="actions">
+    <button id="btn-ics"    onclick="exportNextICS()">📆 캘린더에 추가</button>
+    <button id="btn-snooze" onclick="snoozeNext()">⏰ 5분 스누즈</button>
+  </div>
+</div>
+
+<!-- ADD FORM -->
+<div class="card">
+  <h2>+ 스케쥴 추가</h2>
+  <div class="form-row">
+    <div class="field">
+      <label>제목</label>
+      <input type="text" id="inp-title" placeholder="예) 회의, 약 먹기, 운동" />
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>날짜</label>
+        <input type="date" id="inp-date" />
+      </div>
+      <div class="field">
+        <label>시간</label>
+        <input type="time" id="inp-time" />
+      </div>
+    </div>
+    <div class="field">
+      <label>사전 알람</label>
+      <select id="inp-before">
+        <option value="0">정각</option>
+        <option value="5">5분 전</option>
+        <option value="10" selected>10분 전</option>
+        <option value="15">15분 전</option>
+        <option value="30">30분 전</option>
+        <option value="60">1시간 전</option>
+      </select>
+    </div>
+    <button class="add-btn" onclick="addSchedule()">추가하기</button>
+  </div>
+</div>
+
+<!-- LIST -->
+<div class="section-header">
+  <h2>스케쥴</h2>
+  <span class="badge" id="count-badge">0</span>
+</div>
+<div id="schedule-list">
+  <div class="empty-state">
+    <div class="icon">🗓️</div>
+    <p>스케쥴을 추가해 보세요</p>
+  </div>
+</div>
+
+<!-- ALARM MODAL -->
+<div id="alarm-overlay">
+  <div id="alarm-modal">
+    <div class="alarm-icon">⏰</div>
+    <h2 id="modal-title">알람!</h2>
+    <p id="modal-desc">일정 시간이 되었습니다</p>
+    <div class="modal-btns">
+      <button id="btn-snooze2" onclick="snoozeAlarm()">5분 스누즈</button>
+      <button id="btn-dismiss" onclick="dismissAlarm()">확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let schedules = JSON.parse(localStorage.getItem('schedules') || '[]');
+let alarmAudio = null;
+let alarmInterval = null;
+let snoozedUntil = {};
+
+const COLORS = ['#007aff','#34c759','#ff9500','#ff3b30','#af52de','#5856d6','#ff2d55','#00c7be'];
+function colorFor(id) { return COLORS[Math.abs(id) % COLORS.length]; }
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+(function init() {
+  // Default date = today
+  const d = new Date();
+  document.getElementById('inp-date').value = fmtDate(d);
+  document.getElementById('inp-time').value = fmtTime(new Date(d.getTime() + 60*60*1000));
+
+  render();
+  tick();
+  setInterval(tick, 1000);
+  requestNotificationPermission();
+})();
+
+// ── CLOCK + TICKER ─────────────────────────────────────────────────────────
+function tick() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('ko-KR');
+  updateBanner(now);
+  checkAlarms(now);
+  render(); // re-render status
+}
+
+// ── ADD SCHEDULE ───────────────────────────────────────────────────────────
+function addSchedule() {
+  const title  = document.getElementById('inp-title').value.trim();
+  const date   = document.getElementById('inp-date').value;
+  const time   = document.getElementById('inp-time').value;
+  const before = parseInt(document.getElementById('inp-before').value);
+
+  if (!title) return shake('inp-title', '제목을 입력하세요');
+  if (!date)  return shake('inp-date',  '날짜를 선택하세요');
+  if (!time)  return shake('inp-time',  '시간을 선택하세요');
+
+  const dt = new Date(`${date}T${time}`);
+  if (isNaN(dt)) return alert('날짜/시간이 올바르지 않습니다.');
+
+  const id = Date.now();
+  schedules.push({ id, title, dt: dt.toISOString(), before, fired: false });
+  save();
+  render();
+
+  // Reset inputs
+  document.getElementById('inp-title').value = '';
+  const next = new Date(dt.getTime() + 60*60*1000);
+  document.getElementById('inp-time').value = fmtTime(next);
+
+  // Haptic
+  if (navigator.vibrate) navigator.vibrate(30);
+}
+
+function shake(id, msg) {
+  const el = document.getElementById(id);
+  el.style.borderColor = 'var(--danger)';
+  el.style.animation = 'none';
+  setTimeout(() => { el.style.animation = ''; el.style.borderColor = ''; }, 600);
+  alert(msg);
+}
+
+// ── DELETE ─────────────────────────────────────────────────────────────────
+function deleteSchedule(id) {
+  schedules = schedules.filter(s => s.id !== id);
+  save();
+  render();
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────
+function render() {
+  const list = document.getElementById('schedule-list');
+  const now  = new Date();
+
+  // Sort by datetime
+  const sorted = [...schedules].sort((a,b) => new Date(a.dt) - new Date(b.dt));
+  document.getElementById('count-badge').textContent = sorted.length;
+
+  if (!sorted.length) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">🗓️</div><p>스케쥴을 추가해 보세요</p></div>`;
+    return;
+  }
+
+  list.innerHTML = sorted.map(s => {
+    const dt   = new Date(s.dt);
+    const diff = dt - now;
+    const alarmDt = new Date(dt.getTime() - s.before * 60000);
+    let statusCls, statusTxt;
+
+    if (diff < 0) {
+      statusCls = 'status-done'; statusTxt = '완료';
+    } else if (diff < 10 * 60000) {
+      statusCls = 'status-now'; statusTxt = '곧 시작';
+    } else if (diff < 60 * 60000) {
+      statusCls = 'status-soon'; statusTxt = msToDiff(diff);
+    } else {
+      statusCls = 'status-up'; statusTxt = msToDiff(diff);
+    }
+
+    const dateStr = dt.toLocaleDateString('ko-KR', { month:'short', day:'numeric', weekday:'short' });
+    const timeStr = dt.toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' });
+    const alarmStr = s.before > 0 ? ` · ${s.before}분 전 알람` : '';
+
+    return `
+    <div class="sched-item" id="si-${s.id}">
+      <div class="dot" style="background:${colorFor(s.id)}"></div>
+      <div class="info">
+        <div class="s-title">${esc(s.title)}</div>
+        <div class="s-time">${dateStr} ${timeStr}${alarmStr}</div>
+      </div>
+      <span class="s-status ${statusCls}">${statusTxt}</span>
+      <button class="del-btn" onclick="deleteSchedule(${s.id})" aria-label="삭제">×</button>
+    </div>`;
+  }).join('');
+}
+
+// ── BANNER ────────────────────────────────────────────────────────────────
+function updateBanner(now) {
+  const upcoming = schedules
+    .filter(s => {
+      const alarmDt = new Date(new Date(s.dt).getTime() - s.before * 60000);
+      return alarmDt > now && !snoozedUntil[s.id];
+    })
+    .sort((a,b) => {
+      const ta = new Date(new Date(a.dt).getTime() - a.before*60000);
+      const tb = new Date(new Date(b.dt).getTime() - b.before*60000);
+      return ta - tb;
+    });
+
+  const banner = document.getElementById('next-banner');
+  if (!upcoming.length) { banner.style.display = 'none'; return; }
+
+  const next = upcoming[0];
+  const dt   = new Date(next.dt);
+  const alarmDt = new Date(dt.getTime() - next.before * 60000);
+  const diff = alarmDt - now;
+
+  banner.style.display = 'block';
+  document.getElementById('nb-title').textContent = next.title;
+  document.getElementById('nb-when').textContent  =
+    dt.toLocaleDateString('ko-KR', { month:'short', day:'numeric', weekday:'short' }) + ' ' +
+    dt.toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('nb-countdown').textContent = msToDiff(diff, true);
+
+  window._nextSchedule = next;
+}
+
+// ── ALARM CHECK ────────────────────────────────────────────────────────────
+function checkAlarms(now) {
+  schedules.forEach(s => {
+    if (s.fired) return;
+    const alarmDt = new Date(new Date(s.dt).getTime() - s.before * 60000);
+    if (snoozedUntil[s.id] && snoozedUntil[s.id] > now) return;
+
+    if (now >= alarmDt && now < new Date(alarmDt.getTime() + 60000)) {
+      s.fired = true;
+      save();
+      triggerAlarm(s);
+    }
+  });
+}
+
+function triggerAlarm(s) {
+  // Browser notification
+  if (Notification.permission === 'granted') {
+    new Notification('⏰ ' + s.title, {
+      body: '일정 시간이 되었습니다!',
+      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⏰</text></svg>',
+      requireInteraction: true
+    });
+  }
+
+  // In-page alarm
+  playAlarmSound();
+  document.getElementById('modal-title').textContent = s.title;
+  document.getElementById('modal-desc').textContent  =
+    new Date(s.dt).toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' }) + ' 일정';
+  document.getElementById('alarm-overlay').classList.add('show');
+  if (navigator.vibrate) navigator.vibrate([500,200,500,200,500]);
+  window._firingSchedule = s;
+}
+
+function dismissAlarm() {
+  stopAlarmSound();
+  document.getElementById('alarm-overlay').classList.remove('show');
+}
+
+function snoozeAlarm() {
+  const s = window._firingSchedule;
+  if (s) {
+    snoozedUntil[s.id] = new Date(Date.now() + 5*60000);
+    s.fired = false;
+    save();
+  }
+  dismissAlarm();
+}
+
+function snoozeNext() {
+  const s = window._nextSchedule;
+  if (s) {
+    snoozedUntil[s.id] = new Date(Date.now() + 5*60000);
+    s.fired = false;
+    save();
+  }
+}
+
+// ── SOUND ──────────────────────────────────────────────────────────────────
+function playAlarmSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    function beep(t) {
+      const osc = ctx.createOscillator();
+      const g   = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.4, t + 0.05);
+      g.gain.linearRampToValueAtTime(0, t + 0.4);
+      osc.start(t); osc.stop(t + 0.5);
+    }
+    for (let i = 0; i < 5; i++) beep(ctx.currentTime + i * 0.6);
+    alarmAudio = ctx;
+  } catch(e) {}
+}
+
+function stopAlarmSound() {
+  if (alarmAudio) { try { alarmAudio.close(); } catch(e) {} alarmAudio = null; }
+}
+
+// ── ICS EXPORT ─────────────────────────────────────────────────────────────
+function exportNextICS() {
+  const s = window._nextSchedule;
+  if (!s) return alert('내보낼 스케쥴이 없습니다.');
+  exportICS(s);
+}
+
+function exportICS(s) {
+  const dt    = new Date(s.dt);
+  const dtEnd = new Date(dt.getTime() + 60*60*1000);
+  const uid   = s.id + '@schedule-alarm';
+
+  const pad = n => String(n).padStart(2,'0');
+  const fmt = d =>
+    d.getUTCFullYear() + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()) + 'T' +
+    pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + 'Z';
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Schedule Alarm//KO',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTART:${fmt(dt)}`,
+    `DTEND:${fmt(dtEnd)}`,
+    `SUMMARY:${s.title}`,
+    'BEGIN:VALARM',
+    'ACTION:AUDIO',
+    `TRIGGER:-PT${s.before}M`,
+    'DESCRIPTION:알람',
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `${s.title.replace(/[^가-힣a-zA-Z0-9]/g,'_')}.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── NOTIFICATIONS ──────────────────────────────────────────────────────────
+async function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+}
+
+// ── UTILS ──────────────────────────────────────────────────────────────────
+function save() { localStorage.setItem('schedules', JSON.stringify(schedules)); }
+
+function fmtDate(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+
+function fmtTime(d) {
+  return String(d.getHours()).padStart(2,'0') + ':' +
+    String(d.getMinutes()).padStart(2,'0');
+}
+
+function msToDiff(ms, short = false) {
+  if (ms <= 0) return '완료';
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  const d = Math.floor(h / 24);
+  if (d > 0)  return short ? `${d}일 ${h%24}시간` : `${d}일 후`;
+  if (h > 0)  return short ? `${h}시간 ${String(m%60).padStart(2,'0')}분` : `${h}시간 후`;
+  if (m > 0)  return short ? `${m}분 ${String(s%60).padStart(2,'0')}초` : `${m}분 후`;
+  return `${s}초`;
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── SAMPLE DATA (first run) ─────────────────────────────────────────────────
+if (!schedules.length) {
+  const now = new Date();
+  const t1  = new Date(now.getTime() + 35*60*1000);
+  const t2  = new Date(now.getTime() + 2*60*60*1000);
+  const t3  = new Date(now.getTime() + 24*60*60*1000);
+  schedules = [
+    { id: 1, title: '오전 미팅', dt: t1.toISOString(), before: 10, fired: false },
+    { id: 2, title: '점심 약속', dt: t2.toISOString(), before: 15, fired: false },
+    { id: 3, title: '운동',      dt: t3.toISOString(), before:  5, fired: false },
+  ];
+  save();
+}
+</script>
+</body>
+</html>
