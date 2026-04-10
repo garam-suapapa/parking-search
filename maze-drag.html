@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>드래그 미로</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #0d1117;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #cdd9e5;
+    gap: 12px;
+    padding: 16px;
+}
+h1 {
+    font-size: 1.8rem;
+    color: #58a6ff;
+    letter-spacing: 2px;
+}
+#controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+select, button {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid #30363d;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+select {
+    background: #161b22;
+    color: #cdd9e5;
+}
+button {
+    background: #238636;
+    color: white;
+    border-color: #2ea043;
+    font-weight: bold;
+    transition: background 0.2s;
+}
+button:hover { background: #2ea043; }
+#status-bar {
+    display: flex;
+    gap: 24px;
+    font-size: 1rem;
+}
+#status-msg {
+    font-size: 1rem;
+    height: 1.4em;
+    text-align: center;
+}
+#canvas {
+    border-radius: 8px;
+    cursor: crosshair;
+    display: block;
+    touch-action: none;
+    box-shadow: 0 0 30px rgba(88, 166, 255, 0.15);
+}
+.label { color: #8b949e; }
+#timer { color: #f78166; font-weight: bold; font-size: 1.1rem; }
+#fail-count { color: #d2a8ff; font-weight: bold; font-size: 1.1rem; }
+</style>
+</head>
+<body>
+<h1>🧩 드래그 미로</h1>
+
+<div id="controls">
+    <select id="difficulty">
+        <option value="8">쉬움 (8×8)</option>
+        <option value="12" selected>보통 (12×12)</option>
+        <option value="18">어려움 (18×18)</option>
+        <option value="25">극한 (25×25)</option>
+    </select>
+    <button onclick="newGame()">🔄 새 미로</button>
+</div>
+
+<div id="status-bar">
+    <span><span class="label">시간: </span><span id="timer">0.0</span>초</span>
+    <span><span class="label">실패: </span><span id="fail-count">0</span>회</span>
+</div>
+<div id="status-msg">🟢 초록 점에서 드래그를 시작하세요!</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const timerEl = document.getElementById('timer');
+const failEl = document.getElementById('fail-count');
+const statusMsg = document.getElementById('status-msg');
+
+const DIRS = [
+    { dc: 0, dr: -1, wall: 'top',    opp: 'bottom' },
+    { dc: 1, dr: 0,  wall: 'right',  opp: 'left'   },
+    { dc: 0, dr: 1,  wall: 'bottom', opp: 'top'    },
+    { dc: -1, dr: 0, wall: 'left',   opp: 'right'  },
+];
+
+let cols, rows, cellSize;
+let grid = [];
+let wallSegs = [];
+let path = [];
+let drawing = false;
+let gameActive = false;
+let failFlash = false;
+let won = false;
+let fails = 0;
+let startTime;
+let timerInterval;
+
+const MAX_SIZE = Math.min(window.innerWidth - 32, window.innerHeight - 220, 580);
+
+// ─── 미로 생성 (DFS) ────────────────────────────────────────
+function initGrid() {
+    grid = [];
+    for (let r = 0; r < rows; r++)
+        for (let c = 0; c < cols; c++)
+            grid.push({
+                col: c, row: r,
+                walls: { top: true, right: true, bottom: true, left: true },
+                visited: false
+            });
+}
+
+function getCell(c, r) {
+    if (c < 0 || c >= cols || r < 0 || r >= rows) return null;
+    return grid[r * cols + c];
+}
+
+function generateMaze() {
+    initGrid();
+    const stack = [getCell(0, 0)];
+    stack[0].visited = true;
+
+    while (stack.length) {
+        const cur = stack[stack.length - 1];
+        const nbrs = [];
+        for (const d of DIRS) {
+            const n = getCell(cur.col + d.dc, cur.row + d.dr);
+            if (n && !n.visited) nbrs.push({ cell: n, d });
+        }
+        if (!nbrs.length) { stack.pop(); continue; }
+        const { cell: next, d } = nbrs[Math.floor(Math.random() * nbrs.length)];
+        cur.walls[d.wall] = false;
+        next.walls[d.opp] = false;
+        next.visited = true;
+        stack.push(next);
+    }
+}
+
+function buildWalls() {
+    const seen = new Set();
+    wallSegs = [];
+    const cs = cellSize;
+
+    for (const cell of grid) {
+        const { col: c, row: r } = cell;
+        const x = c * cs, y = r * cs;
+        const sides = [
+            { has: cell.walls.top,    x1: x,    y1: y,    x2: x+cs, y2: y    },
+            { has: cell.walls.right,  x1: x+cs, y1: y,    x2: x+cs, y2: y+cs },
+            { has: cell.walls.bottom, x1: x,    y1: y+cs, x2: x+cs, y2: y+cs },
+            { has: cell.walls.left,   x1: x,    y1: y,    x2: x,    y2: y+cs },
+        ];
+        for (const s of sides) {
+            if (!s.has) continue;
+            const key = `${Math.min(s.x1,s.x2)},${Math.min(s.y1,s.y2)},${Math.max(s.x1,s.x2)},${Math.max(s.y1,s.y2)}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                wallSegs.push([s.x1, s.y1, s.x2, s.y2]);
+            }
+        }
+    }
+}
+
+// ─── 충돌 감지 (선분 교차) ─────────────────────────────────
+function cross2d(ax, ay, bx, by) { return ax * by - ay * bx; }
+
+function segIntersect(p1x, p1y, p2x, p2y, p3x, p3y, p4x, p4y) {
+    const d1x = p2x-p1x, d1y = p2y-p1y;
+    const d2x = p4x-p3x, d2y = p4y-p3y;
+    const denom = cross2d(d1x, d1y, d2x, d2y);
+    if (Math.abs(denom) < 1e-10) return false;
+    const dx = p3x-p1x, dy = p3y-p1y;
+    const t = cross2d(dx, dy, d2x, d2y) / denom;
+    const u = cross2d(dx, dy, d1x, d1y) / denom;
+    return t > 1e-4 && t < 1-1e-4 && u >= 0 && u <= 1;
+}
+
+function hitWall(x1, y1, x2, y2) {
+    for (const [wx1, wy1, wx2, wy2] of wallSegs)
+        if (segIntersect(x1, y1, x2, y2, wx1, wy1, wx2, wy2)) return true;
+    return false;
+}
+
+// ─── 렌더링 ────────────────────────────────────────────────
+function draw() {
+    const cs = cellSize;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 배경
+    ctx.fillStyle = '#0d1117';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 통로 바닥 (밝게)
+    ctx.fillStyle = '#161b22';
+    for (const cell of grid) {
+        ctx.fillRect(cell.col * cs + 1, cell.row * cs + 1, cs - 2, cs - 2);
+    }
+
+    // 시작/끝 셀 강조
+    ctx.fillStyle = 'rgba(46, 160, 67, 0.2)';
+    ctx.fillRect(1, 1, cs - 2, cs - 2);
+    ctx.fillStyle = 'rgba(210, 168, 255, 0.2)';
+    ctx.fillRect((cols-1)*cs + 1, (rows-1)*cs + 1, cs - 2, cs - 2);
+
+    // 벽
+    ctx.strokeStyle = '#58a6ff';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'square';
+    ctx.beginPath();
+    for (const [x1, y1, x2, y2] of wallSegs) {
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+    }
+    ctx.stroke();
+
+    // 시작 마커 (S)
+    const sx = cs / 2, sy = cs / 2;
+    ctx.fillStyle = '#2ea043';
+    ctx.beginPath();
+    ctx.arc(sx, sy, cs * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${Math.max(10, Math.floor(cs * 0.32))}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('S', sx, sy);
+
+    // 끝 마커 (E)
+    const ex = (cols - 0.5) * cs, ey = (rows - 0.5) * cs;
+    ctx.fillStyle = '#d2a8ff';
+    ctx.beginPath();
+    ctx.arc(ex, ey, cs * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#0d1117';
+    ctx.fillText('E', ex, ey);
+
+    // 경로
+    if (path.length > 1) {
+        const color = won ? '#ffd700'
+                    : failFlash ? '#f78166'
+                    : '#3fb950';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(4, cs * 0.32);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.moveTo(path[0].x, path[0].y);
+        for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+}
+
+// ─── 입력 처리 ─────────────────────────────────────────────
+function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / rect.width;
+    const sy = canvas.height / rect.height;
+    const src = e.touches ? e.touches[0] : e;
+    return {
+        x: (src.clientX - rect.left) * sx,
+        y: (src.clientY - rect.top) * sy
+    };
+}
+
+function onStart(e) {
+    if (!gameActive || won) return;
+    const pos = getPos(e);
+    const cs = cellSize;
+    // 시작점 근처에서만 드래그 시작 허용
+    if (Math.hypot(pos.x - cs/2, pos.y - cs/2) > cs * 0.75) return;
+    drawing = true;
+    failFlash = false;
+    path = [{ x: cs/2, y: cs/2 }]; // 정확히 S에서 시작
+    draw();
+}
+
+function onMove(e) {
+    if (!drawing || !gameActive) return;
+    e.preventDefault();
+    const pos = getPos(e);
+    const last = path[path.length - 1];
+
+    // 너무 짧은 이동은 건너뜀 (성능)
+    if (Math.hypot(pos.x - last.x, pos.y - last.y) < 1.5) return;
+
+    if (hitWall(last.x, last.y, pos.x, pos.y)) {
+        path.push(pos);
+        failFlash = true;
+        drawing = false;
+        gameActive = false;
+        fails++;
+        failEl.textContent = fails;
+        statusMsg.textContent = '💥 벽에 부딪혔습니다! 잠시 후 재시도...';
+        draw();
+        setTimeout(() => {
+            failFlash = false;
+            path = [];
+            gameActive = true;
+            statusMsg.textContent = '🟢 초록 점에서 드래그를 시작하세요!';
+            draw();
+        }, 900);
+        return;
+    }
+
+    path.push(pos);
+
+    // 도착 판정
+    const ex = (cols - 0.5) * cellSize;
+    const ey = (rows - 0.5) * cellSize;
+    if (Math.hypot(pos.x - ex, pos.y - ey) < cellSize * 0.45) {
+        won = true;
+        drawing = false;
+        gameActive = false;
+        clearInterval(timerInterval);
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        statusMsg.textContent = `🎉 탈출 성공! ${elapsed}초 완료 / 실패 ${fails}회`;
+        draw();
+        return;
+    }
+
+    draw();
+}
+
+function onEnd() { drawing = false; }
+
+canvas.addEventListener('mousedown', onStart);
+canvas.addEventListener('mousemove', onMove);
+canvas.addEventListener('mouseup', onEnd);
+canvas.addEventListener('mouseleave', onEnd);
+canvas.addEventListener('touchstart', onStart, { passive: false });
+canvas.addEventListener('touchmove', onMove, { passive: false });
+canvas.addEventListener('touchend', onEnd);
+
+// ─── 게임 초기화 ───────────────────────────────────────────
+function newGame() {
+    const diff = parseInt(document.getElementById('difficulty').value);
+    cols = diff;
+    rows = diff;
+    cellSize = Math.floor(MAX_SIZE / cols);
+    canvas.width = cols * cellSize;
+    canvas.height = rows * cellSize;
+
+    clearInterval(timerInterval);
+    fails = 0;
+    won = false;
+    failFlash = false;
+    path = [];
+    drawing = false;
+    failEl.textContent = 0;
+
+    generateMaze();
+    buildWalls();
+
+    gameActive = true;
+    startTime = Date.now();
+    timerInterval = setInterval(() => {
+        if (!won) timerEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1);
+    }, 100);
+
+    statusMsg.textContent = '🟢 초록 점에서 드래그를 시작하세요!';
+    draw();
+}
+
+newGame();
+</script>
+</body>
+</html>
