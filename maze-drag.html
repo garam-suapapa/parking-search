@@ -75,6 +75,13 @@ button:hover { background: #2ea043; }
 <h1>🧩 드래그 미로</h1>
 
 <div id="controls">
+    <select id="screen-size" onchange="newGame()">
+        <option value="auto">자동 (기기 맞춤)</option>
+        <option value="360">📱 핸드폰 세로 (360px)</option>
+        <option value="600">📱 핸드폰 가로 (600px)</option>
+        <option value="700">📟 아이패드 미니 (700px)</option>
+        <option value="900">🖥️ 아이패드 (900px)</option>
+    </select>
     <select id="difficulty">
         <option value="8">쉬움 (8×8)</option>
         <option value="12" selected>보통 (12×12)</option>
@@ -118,7 +125,11 @@ let fails = 0;
 let startTime;
 let timerInterval;
 
-const MAX_SIZE = Math.min(window.innerWidth - 32, window.innerHeight - 220, 580);
+function getMaxSize() {
+    const val = document.getElementById('screen-size').value;
+    if (val === 'auto') return Math.min(window.innerWidth - 32, window.innerHeight - 220, 580);
+    return Math.min(parseInt(val), window.innerWidth - 32, window.innerHeight - 220);
+}
 
 // ─── 미로 생성 (DFS) ────────────────────────────────────────
 function initGrid() {
@@ -365,7 +376,7 @@ function newGame() {
     const diff = parseInt(document.getElementById('difficulty').value);
     cols = diff;
     rows = diff;
-    cellSize = Math.floor(MAX_SIZE / cols);
+    cellSize = Math.floor(getMaxSize() / cols);
     canvas.width = cols * cellSize;
     canvas.height = rows * cellSize;
 
