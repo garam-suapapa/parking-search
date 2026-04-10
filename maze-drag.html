@@ -291,11 +291,15 @@ function onStart(e) {
     if (!gameActive || won) return;
     const pos = getPos(e);
     const cs = cellSize;
-    // 시작점 근처에서만 드래그 시작 허용
-    if (Math.hypot(pos.x - cs/2, pos.y - cs/2) > cs * 0.75) return;
+
+    if (path.length === 0) {
+        // 첫 시작: S 근처에서만 허용
+        if (Math.hypot(pos.x - cs/2, pos.y - cs/2) > cs * 0.75) return;
+        path = [{ x: cs/2, y: cs/2 }];
+    }
+    // 경로가 있으면 마지막 지점에서 이어서 그리기
     drawing = true;
     failFlash = false;
-    path = [{ x: cs/2, y: cs/2 }]; // 정확히 S에서 시작
     draw();
 }
 
@@ -321,7 +325,7 @@ function onMove(e) {
             failFlash = false;
             path = [];
             gameActive = true;
-            statusMsg.textContent = '🟢 초록 점에서 드래그를 시작하세요!';
+            statusMsg.textContent = '🟢 S에서 시작 → 손 떼고 다시 클릭해 이어 그리기 가능!';
             draw();
         }, 900);
         return;
@@ -382,7 +386,7 @@ function newGame() {
         if (!won) timerEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1);
     }, 100);
 
-    statusMsg.textContent = '🟢 초록 점에서 드래그를 시작하세요!';
+    statusMsg.textContent = '🟢 S에서 시작 → 손 떼고 다시 클릭해 이어 그리기 가능!';
     draw();
 }
 
