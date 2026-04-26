@@ -173,6 +173,108 @@
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
+
+  /* ── 피아노 건반 ── */
+  #pianoWrapper {
+    height: 120px;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.4), rgba(255,255,255,0.8));
+    border-top: 3px solid rgba(255, 105, 180, 0.3);
+    display: flex;
+    justify-content: center;
+    padding: 10px 0 10px 10px;
+    flex-shrink: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    backdrop-filter: blur(10px);
+  }
+  .key-container { position: relative; height: 100%; display: flex; }
+  .key-white {
+    width: 45px;
+    border-radius: 0 0 10px 10px;
+    cursor: pointer;
+    background: #fff;
+    border: 1px solid #ffccde;
+    box-shadow: 0 4px 6px rgba(255,105,180,0.1), inset 0 -4px 0 rgba(0,0,0,0.05);
+    transition: all 0.1s;
+    z-index: 1;
+    user-select: none;
+    position: relative;
+    margin-right: 2px;
+  }
+  .key-white:active, .key-white.active {
+    transform: translateY(4px) scale(0.98);
+    box-shadow: 0 0px 2px rgba(255,105,180,0.1), inset 0 -2px 0 rgba(0,0,0,0.05);
+    background: #fff0f5;
+  }
+  .key-black {
+    position: absolute;
+    background: linear-gradient(to bottom, #555, #222);
+    width: 28px;
+    height: 60%;
+    border-radius: 0 0 8px 8px;
+    cursor: pointer;
+    z-index: 2;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3), inset 0 -3px 0 rgba(255,105,180,0.2);
+    user-select: none;
+    margin-left: -15px;
+  }
+  .key-black:active, .key-black.active {
+    transform: translateY(2px) scale(0.98);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3), inset 0 -1px 0 rgba(255,105,180,0.2);
+  }
+  .key-label {
+    position: absolute;
+    bottom: 6px;
+    width: 100%;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #ff3377;
+    font-weight: 800;
+    pointer-events: none;
+  }
+
+  /* ── 꾹 누르기 상태 (타임바) ── */
+  #activePreview {
+    position: absolute;
+    pointer-events: none;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    z-index: 50;
+    transform: translate(-50%, -100%);
+    margin-top: -30px;
+  }
+  #activeGhost {
+    width: 48px;
+    height: 48px;
+    background: center/contain no-repeat;
+    filter: drop-shadow(0 4px 10px rgba(255, 51, 119, 0.7));
+    border-radius: 50%;
+  }
+  #holdProgress {
+    width: 50px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 3px;
+    margin-top: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  #holdBar {
+    width: 0%;
+    height: 100%;
+    background: #ff3377;
+  }
+  #holdDurText {
+    margin-top: 5px;
+    font-size: 11px;
+    font-weight: bold;
+    color: #fff;
+    background: #ff3377;
+    padding: 3px 8px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(255,51,119,0.3);
+  }
 </style>
 </head>
 <body>
@@ -199,9 +301,16 @@
 <div id="staffWrapper">
   <canvas id="staffCanvas"></canvas>
   <div id="ghostNote"></div>
+  <div id="activePreview">
+    <div id="activeGhost"></div>
+    <div id="holdProgress"><div id="holdBar"></div></div>
+    <div id="holdDurText"></div>
+  </div>
 </div>
 
-<div id="statusBar" id="statusBar">클릭(터치)해서 음표를 입력하세요 | 꾹 누르면 음표 길이 자동 결정</div>
+<div id="pianoWrapper"></div>
+
+<div id="statusBar">클릭(터치)해서 음표를 입력 / 꾹 누르면 음표 길이 자동 감지</div>
 
 <script>
 // ═══════════════════════════════════════════════════
@@ -219,13 +328,61 @@ const MIN_CANVAS_W = 1200;
 const BPM = 80;
 const QUARTER_SEC = 60 / BPM;  // 사분음표 1박 시간(초)
 
-// 음이름 → 주파수 (C4 기준)
 const NOTE_FREQS = {
-  'D5':587.33,'C5':523.25,'B4':493.88,'Bb4':466.16,'A4':440.00,'G4':392.00,
-  'F4':349.23,'E4':329.63,'D4':293.66,'C4':261.63,
+  'F5': 698.46, 'E5': 659.25, 'Eb5': 622.25, 'D5':587.33, 'Db5': 554.37, 'C5':523.25, 'B4':493.88, 'Bb4':466.16, 'A4':440.00, 'Ab4': 415.30, 'G4':392.00, 'Gb4': 369.99,
+  'F4':349.23, 'E4':329.63, 'Eb4': 311.13, 'D4':293.66, 'Db4': 277.18, 'C4':261.63,
   'B3':246.94,'Bb3':233.08,'A3':220.00,'G3':196.00,'F3':174.61,
   'E3':164.81,'D3':146.83,'C3':130.81
 };
+
+const PIANO_KEYS = [
+  { note: 'C4', white: true }, { note: 'Db4', white: false }, { note: 'D4', white: true },
+  { note: 'Eb4', white: false }, { note: 'E4', white: true }, { note: 'F4', white: true },
+  { note: 'Gb4', white: false }, { note: 'G4', white: true }, { note: 'Ab4', white: false },
+  { note: 'A4', white: true }, { note: 'Bb4', white: false }, { note: 'B4', white: true },
+  { note: 'C5', white: true }, { note: 'Db5', white: false }, { note: 'D5', white: true },
+  { note: 'Eb5', white: false }, { note: 'E5', white: true }, { note: 'F5', white: true }
+];
+
+function buildPiano() {
+  const wrapper = document.getElementById('pianoWrapper');
+  wrapper.innerHTML = '';
+  const container = document.createElement('div');
+  container.className = 'key-container';
+  wrapper.appendChild(container);
+  
+  const whiteKeyWidth = 47; // 45 width + 2 margin
+  let whiteCount = 0;
+  
+  PIANO_KEYS.forEach(k => {
+    const el = document.createElement('div');
+    el.dataset.note = k.note;
+    
+    if (k.white) {
+      el.className = 'key-white';
+      el.innerHTML = `<div class="key-label">${k.note}</div>`;
+      container.appendChild(el);
+      whiteCount++;
+    } else {
+      el.className = 'key-black';
+      el.style.left = (whiteCount * whiteKeyWidth) + 'px';
+      container.appendChild(el);
+    }
+    
+    // 건반 입력 시 터치 스크롤 방지
+    const press = (e) => { e.preventDefault(); pressPianoKey(k.note); };
+    el.addEventListener('mousedown', press);
+    el.addEventListener('touchstart', press, {passive: false});
+  });
+}
+
+function pressPianoKey(noteName) {
+  playNote(noteName);
+  // 검은건반 임시 매핑(조표가 없으므로 화면에는 가장 가까운 원음으로 표시)
+  const mappedNote = NOTE_OFFSETS[noteName] ? noteName : noteName.replace(/b/,''); 
+  addNote(mappedNote, selectedDur);
+  setStatus(`${noteName} 피아노 건반 연주!`);
+}
 
 // 음이름 → 오선지 Y 위치 (픽셀 오프셋, 오선 중간 B4 기준)
 // staffY = staffCenterY - offset
@@ -511,6 +668,13 @@ function holdToDuration(ms) {
 // ═══════════════════════════════════════════════════
 let pressStartTime = 0;
 let pendingNote = null;
+let pressStartX = 0;
+let pressStartY = 0;
+let holdAnimFrame = null;
+const activePreview = document.getElementById('activePreview');
+const activeGhost = document.getElementById('activeGhost');
+const holdBar = document.getElementById('holdBar');
+const holdDurText = document.getElementById('holdDurText');
 
 function getCanvasPos(e) {
   const rect = canvas.getBoundingClientRect();
@@ -527,7 +691,8 @@ function getCanvasPos(e) {
 function onPressStart(e) {
   if (e.target !== canvas) return;
   if (isPlaying) return;
-  e.preventDefault();
+  
+  // NOTE: e.preventDefault() 를 여기서 호출하지 않으면 가로 스크롤 가능!
 
   const { x, y } = getCanvasPos(e);
   if (x < CLEF_WIDTH) return;
@@ -535,15 +700,74 @@ function onPressStart(e) {
   const name = yToNote(y);
   if (!name) return;
 
+  const isTouch = e.touches && e.touches.length > 0;
+  pressStartX = isTouch ? e.touches[0].clientX : e.clientX;
+  pressStartY = isTouch ? e.touches[0].clientY : e.clientY;
+
   pressStartTime = Date.now();
   pendingNote = name;
 
   playNote(name);
-  setStatus(`${name} 누르는 중... (꾹 누르면 긴 음표)`);
+  setStatus(`${name} 누르는 중...`);
+
+  // Active Preview 표시
+  activePreview.style.display = 'flex';
+  activePreview.style.left = pressStartX + 'px';
+  activePreview.style.top = pressStartY + 'px';
+  updateHoldAnim();
+}
+
+function updateHoldAnim() {
+  if (!pendingNote) return;
+  const holdMs = Date.now() - pressStartTime;
+  
+  if (autoMode) {
+    const dur = holdToDuration(holdMs);
+    activeGhost.style.backgroundImage = `url('${getGhostImageURL(dur)}')`;
+    
+    // Progress Bar 애니메이션 (최대 800ms 기준)
+    let p = Math.min(100, (holdMs / 800) * 100);
+    holdBar.style.width = p + '%';
+    
+    if (dur === 0.125) holdBar.style.background = '#81e6d9'; // 포실톤
+    else if (dur === 0.25) holdBar.style.background = '#fbd38d'; // 방글톤
+    else if (dur === 0.5) holdBar.style.background = '#feb2b2'; // 아야톤
+    else holdBar.style.background = '#ff5277'; // 삐뽀톤
+    
+    holdDurText.textContent = DUR_LABELS[dur];
+  } else {
+    activeGhost.style.backgroundImage = `url('${getGhostImageURL(selectedDur)}')`;
+    holdBar.style.width = '100%';
+    holdBar.style.background = '#ff5277';
+    holdDurText.textContent = DUR_LABELS[selectedDur];
+  }
+
+  holdAnimFrame = requestAnimationFrame(updateHoldAnim);
 }
 
 function onPressEnd(e) {
+  activePreview.style.display = 'none';
+  if (holdAnimFrame) cancelAnimationFrame(holdAnimFrame);
+
   if (!pendingNote) return;
+  
+  // 만약 스크롤을 위해 터치 도중 크게 움직였다면 입력 취소
+  let clientX = pressStartX, clientY = pressStartY;
+  if (e.changedTouches && e.changedTouches.length > 0) {
+    clientX = e.changedTouches[0].clientX;
+    clientY = e.changedTouches[0].clientY;
+  } else if (!e.touches && e.clientX) {
+    clientX = e.clientX;
+    clientY = e.clientY;
+  }
+  
+  const dist = Math.sqrt((clientX - pressStartX)**2 + (clientY - pressStartY)**2);
+  if (dist > 15) {
+    pendingNote = null; 
+    setStatus('입력 취소 (스크롤 감지)');
+    return;
+  }
+
   const holdMs = Date.now() - pressStartTime;
   const dur = autoMode ? holdToDuration(holdMs) : selectedDur;
 
@@ -559,9 +783,9 @@ function addNote(name, duration) {
   drawAll();
 }
 
-// 마우스/터치 이벤트 등록
+// 마우스/터치 이벤트 등록 (스크롤 가능하도록 passive: true로 변경)
 canvas.addEventListener('mousedown',  onPressStart);
-canvas.addEventListener('touchstart', onPressStart, { passive: false });
+canvas.addEventListener('touchstart', onPressStart, { passive: true });
 window.addEventListener('mouseup',   onPressEnd);
 window.addEventListener('touchend',  onPressEnd);
 
@@ -715,8 +939,9 @@ function setStatus(msg) {
 // ═══════════════════════════════════════════════════
 window.addEventListener('resize', resize);
 resize();
+buildPiano();
 
-setStatus('오선지를 클릭(터치)해서 음표를 입력하세요 | 꾹 누르면 음표 길이 자동 감지');
+setStatus('오선지를 클릭(터치)하거나 아래 건반을 눌러 음표를 입력하세요!');
 </script>
 </body>
 </html>
