@@ -286,7 +286,8 @@
   <button class="btn" id="btnClear">🗑 지우기</button>
   <select id="sampleSelect" class="btn" style="background: #fff; color: #ff5277; border: 2px solid #ffb8d1; margin-left: 10px; cursor: pointer;">
     <option value="">🎵 티니핑 테마송 선택</option>
-    <option value="sample1">✨ 요청하신 유튜브 레전드 티니핑 악보</option>
+    <option value="sample1">✨ 유튜브 레전드 티니핑 악보</option>
+    <option value="sample2">⭐ 스타티니핑송 (반짝반짝 빛이나는)</option>
     <option value="sample2">🌟 스타티니핑송 (반짝반짝 별처럼)</option>
   </select>
 
@@ -842,23 +843,55 @@ const SAMPLES = {
     {name:'D5',duration:.5}
   ],
   sample2: [
-    // 반짝반짝 (F4 F4 G4 A4) 빛이나 (Bb4, A4, G4)
-    {name:'F4',duration:.125},{name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},
-    {name:'Bb4',duration:.25},{name:'A4',duration:.125},{name:'G4',duration:.125},
-    // 는 별처 (A4 A4 G4) 럼 (F4)
-    {name:'A4',duration:.125},{name:'A4',duration:.125},{name:'G4',duration:.25},{name:'F4',duration:.25},
-    {name:'REST',duration:.25},
-    // 내가 너의 (F4 F4 F4 F4) 별이 되 (G4 A4 Bb4)
-    {name:'F4',duration:.125},{name:'F4',duration:.125},{name:'F4',duration:.125},{name:'F4',duration:.125},
-    {name:'G4',duration:.25},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
-    // 어줄게 (A4 G4 F4)
-    {name:'A4',duration:.125},{name:'G4',duration:.125},{name:'F4',duration:.5},
-    {name:'REST',duration:.25},
-    // 캐치 캐치 슈팅 스타 (D5 D5 C5 C5 Bb4 A4 G4 F4)
-    {name:'D5',duration:.125},{name:'D5',duration:.125},{name:'C5',duration:.125},{name:'C5',duration:.125},
+    // ── 반짝반짝 빛이나 (M1: Bbadd2) ──
+    {name:'F5',duration:.125},{name:'F5',duration:.125},{name:'C5',duration:.125},{name:'C5',duration:.125},
+    {name:'D5',duration:.125},{name:'C5',duration:.125},{name:'Bb4',duration:.125},
+    // ── 는 별처럼 (M2: C) ──
+    {name:'Bb4',duration:.125},{name:'A4',duration:.125},{name:'G4',duration:.25},{name:'F4',duration:.25},
+    // ── 내가너의 (M3: A/C#) ──
+    {name:'F4',duration:.125},{name:'E4',duration:.125},{name:'F4',duration:.125},{name:'G4',duration:.125},
+    // ── 별이되어 (M4: Dm C) ──
+    {name:'A4',duration:.125},{name:'Bb4',duration:.125},{name:'A4',duration:.125},{name:'G4',duration:.125},
+    // ── 줄게 (M5: G/B) ──
+    {name:'F4',duration:.5},
+    // ── 어줄게 → 캐치캐치 슈팅스타 티니핑 (M5-6: Bb C/Bb Bb) ──
+    {name:'Bb4',duration:.125},{name:'C5',duration:.125},{name:'Bb4',duration:.125},{name:'C5',duration:.125},
+    {name:'D5',duration:.125},{name:'C5',duration:.125},{name:'Bb4',duration:.25},
+    {name:'G4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.5},
+    // ── 피리링 피리링 (M7) ──
+    {name:'F5',duration:.125},{name:'E5',duration:.125},{name:'D5',duration:.125},{name:'C5',duration:.125},
+    {name:'F5',duration:.125},{name:'E5',duration:.125},{name:'D5',duration:.125},{name:'C5',duration:.125},
+    // ── 피리링캐치캐치 (M8) ──
+    {name:'Bb4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.125},{name:'C5',duration:.125},
+    {name:'D5',duration:.125},{name:'C5',duration:.125},
+    // ── 피리리링 피리링 (M9-10: Csus4) ──
+    {name:'Bb4',duration:.125},{name:'C5',duration:.125},
+    {name:'D5',duration:.125},{name:'C5',duration:.125},{name:'Bb4',duration:.125},{name:'A4',duration:.125},
+    {name:'Bb4',duration:.5},
+    // ── 사랑의하 츄핑 (M11-12: F, Fsus4/G) ──
+    {name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
+    {name:'G4',duration:.125},{name:'A4',duration:.125},{name:'F4',duration:.25},
+    // ── 치유의빛 나핑 (M13: Fsus4/Bb) ──
+    {name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
+    {name:'G4',duration:.125},{name:'A4',duration:.125},{name:'F4',duration:.25},
+    // ── 소망의초 롱핑 (M14: Fm/Ab) ──
+    {name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
+    {name:'G4',duration:.125},{name:'A4',duration:.125},{name:'F4',duration:.25},
+    // ── 밝음의반 짝핑 (M15: /C) ──
+    {name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
+    {name:'G4',duration:.125},{name:'A4',duration:.125},{name:'F4',duration:.25},
+    // ── 극복의깡 총핑 (M16: F Fsus4/G) ──
+    {name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
+    {name:'G4',duration:.125},{name:'A4',duration:.125},{name:'F4',duration:.25},
+    // ── 활동의홀 라핑 (M17: Fsus4/G) ──
+    {name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
+    {name:'G4',duration:.125},{name:'A4',duration:.125},{name:'F4',duration:.25},
+    // ── 나놈의나 놈핑 (M18: Fsus4/Bb) ──
+    {name:'Bb4',duration:.125},{name:'C5',duration:.125},{name:'D5',duration:.125},{name:'Bb4',duration:.125},
+    {name:'C5',duration:.125},{name:'D5',duration:.125},{name:'Bb4',duration:.25},
+    // ── 보냄의 (M19: F) ──
     {name:'Bb4',duration:.125},{name:'A4',duration:.125},{name:'G4',duration:.125},{name:'F4',duration:.125},
-    // 티니핑 (E4 F4 G4)
-    {name:'E4',duration:.25},{name:'F4',duration:.25},{name:'G4',duration:.5}
+    {name:'G4',duration:.25},{name:'F4',duration:.5}
   ]
 };
 
