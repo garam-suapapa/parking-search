@@ -149,7 +149,7 @@
   #ghostNote {
     position: absolute;
     pointer-events: none;
-    background: url('tiniping/ppipo.png') center/cover no-repeat;
+    background: center/cover no-repeat;
     opacity: 0.8;
     display: none;
     transform: translate(-50%, -50%);
@@ -278,12 +278,17 @@ function setCanvasWidth() {
   canvasW = Math.max(MIN_CANVAS_W, needed);
   
   const dpr = window.devicePixelRatio || 1;
-  canvas.width = canvasW * dpr;
-  canvas.height = canvasH * dpr;
-  canvas.style.width = canvasW + 'px';
-  canvas.style.height = canvasH + 'px';
+  const pWidth = Math.floor(canvasW * dpr);
+  const pHeight = Math.floor(canvasH * dpr);
+
+  if (canvas.width !== pWidth || canvas.height !== pHeight) {
+    canvas.width = pWidth;
+    canvas.height = pHeight;
+    canvas.style.width = canvasW + 'px';
+    canvas.style.height = canvasH + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // Scale the context to match DPR
+  }
   
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // Scale the context to match DPR
   drawAll();
 }
 
@@ -357,15 +362,28 @@ function noteX(slot) {
   return CLEF_WIDTH + slot * NOTE_SLOT_W + NOTE_SLOT_W / 2;
 }
 
-const noteImage = new Image();
-noteImage.src = 'tiniping/ppipo.png';
-noteImage.onload = () => drawAll();
+const IMAGES = {
+  1: new Image(),
+  0.5: new Image(),
+  0.25: new Image(),
+  0.125: new Image()
+};
+let imgLoaded = 0;
+const checkDraw = () => { if (++imgLoaded >= 4) drawAll(); };
+IMAGES[1].onload = checkDraw; IMAGES[1].src = 'tiniping/ppipo.png';
+IMAGES[0.5].onload = checkDraw; IMAGES[0.5].src = 'tiniping/aya.png';
+IMAGES[0.25].onload = checkDraw; IMAGES[0.25].src = 'tiniping/bangle.png';
+IMAGES[0.125].onload = checkDraw; IMAGES[0.125].src = 'tiniping/possil.png';
 
 function drawNote(note, highlight = false) {
   const x = noteX(note.slot);
   const y = staffCenterY + NOTE_OFFSETS[note.name];
 
   ctx.save();
+  
+  // High quality anti-aliasing rendering
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   
   const imgW = 38;
   const imgH = 38;
@@ -388,7 +406,8 @@ function drawNote(note, highlight = false) {
     ctx.translate(-x, -y);
   }
 
-  ctx.drawImage(noteImage, imgX, imgY, imgW, imgH);
+  const img = IMAGES[note.duration] || IMAGES[0.25];
+  ctx.drawImage(img, imgX, imgY, imgW, imgH);
   
   const durMap = { 1:'온', 0.5:'2분', 0.25:'4분', 0.125:'8분' };
   const durStr = durMap[note.duration] || '';
@@ -495,16 +514,13 @@ let pendingNote = null;
 
 function getCanvasPos(e) {
   const rect = canvas.getBoundingClientRect();
-  const scrollLeft = wrapper.scrollLeft;
-  if (e.touches) {
-    return {
-      x: e.touches[0].clientX - rect.left + scrollLeft,
-      y: e.touches[0].clientY - rect.top
-    };
-  }
+  const isTouch = e.touches && e.touches.length > 0;
+  const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+  const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+  
   return {
-    x: e.clientX - rect.left + scrollLeft,
-    y: e.clientY - rect.top
+    x: clientX - rect.left,
+    y: clientY - rect.top
   };
 }
 
@@ -549,24 +565,37 @@ canvas.addEventListener('touchstart', onPressStart, { passive: false });
 window.addEventListener('mouseup',   onPressEnd);
 window.addEventListener('touchend',  onPressEnd);
 
-// 마우스 이동 시 고스트 음표 표시
-canvas.addEventListener('mousemove', e => {
+const getGhostImageURL = (dur) => {
+  if (dur === 1) return 'tiniping/ppipo.png';
+  if (dur === 0.5) return 'tiniping/aya.png';
+  if (dur === 0.25) return 'tiniping/bangle.png';
+  return 'tiniping/possil.png';
+};
+
+// 마우스/터치 이동 시 고스트 음표 표시
+const updateGhost = e => {
   if (isPlaying) { ghost.style.display = 'none'; return; }
+  const isTouch = e.touches && e.touches.length > 0;
+  const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+  
   const { x, y } = getCanvasPos(e);
   const name = yToNote(y);
   if (name && x >= CLEF_WIDTH) {
     const ny = staffCenterY + NOTE_OFFSETS[name];
     const rect = canvas.getBoundingClientRect();
     ghost.style.display = 'block';
-    ghost.style.left = (e.clientX) + 'px';
+    ghost.style.backgroundImage = `url('${getGhostImageURL(selectedDur)}')`;
+    ghost.style.left = clientX + 'px';
     ghost.style.top  = (rect.top + ny) + 'px';
-    ghost.style.width = '32px';
-    ghost.style.height = '32px';
+    ghost.style.width = '38px';
+    ghost.style.height = '38px';
     ghost.title = name;
   } else {
     ghost.style.display = 'none';
   }
-});
+};
+canvas.addEventListener('mousemove', updateGhost);
+canvas.addEventListener('touchmove', updateGhost, { passive: true });
 canvas.addEventListener('mouseleave', () => { ghost.style.display = 'none'; });
 
 // ═══════════════════════════════════════════════════
