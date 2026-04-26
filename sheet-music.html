@@ -287,6 +287,7 @@
   <select id="sampleSelect" class="btn" style="background: #fff; color: #ff5277; border: 2px solid #ffb8d1; margin-left: 10px; cursor: pointer;">
     <option value="">🎵 티니핑 테마송 선택</option>
     <option value="sample1">✨ 요청하신 유튜브 레전드 티니핑 악보</option>
+    <option value="sample2">🌟 스타티니핑송 (반짝반짝 별처럼)</option>
   </select>
 
   <div id="durationGroup">
@@ -497,6 +498,8 @@ function drawAll(highlightSlot = -1) {
 }
 
 function drawNote(note, highlight) {
+  if (note.name === 'REST') return; // 쉼표는 투명하게 자리만 차지함
+
   const x = noteX(note.slot);
   const y = noteAbsY(note.name);
   const S = 38;
@@ -598,11 +601,19 @@ let holdAnimFrame  = null;
 function startPress(noteName, clientX, clientY) {
   pressStartTime = Date.now();
   pendingNote    = noteName;
-  pressStartX    = clientX;
+  pressStartX    = clientX; // 캔버스 터치의 경우 스와이프 취소를 위해 저장
   pressStartY    = clientY;
   playNote(noteName);
   setStatus(`${noteName} 누르는 중...`);
-  activePreview.style.cssText += `;display:flex;left:${clientX}px;top:${clientY}px`;
+  
+  const mapped = NOTE_OFFSETS[noteName] ? noteName : noteName.replace(/b/, '');
+  const nx = noteX(nextSlot);
+  const ny = noteAbsY(mapped);
+  
+  // 포커스가 벗어나 있으면 부드럽게 화면 이동 (옵션)
+  staffWrapper.scrollTo({ left: Math.max(0, nx - staffWrapper.clientWidth / 2), behavior: 'smooth' });
+  
+  activePreview.style.cssText += `;display:flex;left:${nx}px;top:${ny}px`;
   startHoldAnim();
 }
 
@@ -728,10 +739,19 @@ function buildPiano() {
       pianoKeyPending    = k.note;
       el.classList.add('active');
       playNote(k.note);
-      const rect = el.getBoundingClientRect();
+      
       pressStartTime = pianoKeyPressStart;
       pendingNote    = k.note;
-      activePreview.style.cssText += `;display:flex;left:${rect.left + rect.width/2}px;top:${rect.top}px`;
+      pressStartX    = 0; // 피아노 건반은 스와이프 감지 불필요
+      pressStartY    = 0;
+      
+      const mapped = NOTE_OFFSETS[k.note] ? k.note : k.note.replace(/b/, '');
+      const nx = noteX(nextSlot);
+      const ny = noteAbsY(mapped);
+      
+      staffWrapper.scrollTo({ left: Math.max(0, nx - staffWrapper.clientWidth / 2), behavior: 'smooth' });
+      
+      activePreview.style.cssText += `;display:flex;left:${nx}px;top:${ny}px`;
       startHoldAnim();
       setStatus(`${k.note} 누르는 중...`);
     };
@@ -820,6 +840,25 @@ const SAMPLES = {
     {name:'C5',duration:.25},{name:'C5',duration:.25},{name:'Bb4',duration:.25},{name:'A4',duration:.25},
     {name:'G4',duration:.25},{name:'A4',duration:.25},{name:'Bb4',duration:.25},{name:'C5',duration:.25},
     {name:'D5',duration:.5}
+  ],
+  sample2: [
+    // 반짝반짝 (F4 F4 G4 A4) 빛이나 (Bb4, A4, G4)
+    {name:'F4',duration:.125},{name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},
+    {name:'Bb4',duration:.25},{name:'A4',duration:.125},{name:'G4',duration:.125},
+    // 는 별처 (A4 A4 G4) 럼 (F4)
+    {name:'A4',duration:.125},{name:'A4',duration:.125},{name:'G4',duration:.25},{name:'F4',duration:.25},
+    {name:'REST',duration:.25},
+    // 내가 너의 (F4 F4 F4 F4) 별이 되 (G4 A4 Bb4)
+    {name:'F4',duration:.125},{name:'F4',duration:.125},{name:'F4',duration:.125},{name:'F4',duration:.125},
+    {name:'G4',duration:.25},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
+    // 어줄게 (A4 G4 F4)
+    {name:'A4',duration:.125},{name:'G4',duration:.125},{name:'F4',duration:.5},
+    {name:'REST',duration:.25},
+    // 캐치 캐치 슈팅 스타 (D5 D5 C5 C5 Bb4 A4 G4 F4)
+    {name:'D5',duration:.125},{name:'D5',duration:.125},{name:'C5',duration:.125},{name:'C5',duration:.125},
+    {name:'Bb4',duration:.125},{name:'A4',duration:.125},{name:'G4',duration:.125},{name:'F4',duration:.125},
+    // 티니핑 (E4 F4 G4)
+    {name:'E4',duration:.25},{name:'F4',duration:.25},{name:'G4',duration:.5}
   ]
 };
 
