@@ -127,6 +127,10 @@
   <button class="btn" id="btnPlay">▶ 재생</button>
   <button class="btn" id="btnStop">■ 정지</button>
   <button class="btn" id="btnClear">🗑 지우기</button>
+  <select id="sampleSelect" class="btn" style="background: #fff; color: #ff5277; border: 2px solid #ffb8d1; margin-left: 10px; cursor: pointer;">
+    <option value="">🎵 티니핑 테마송 선택</option>
+    <option value="sample1">✨ 요청하신 유튜브 레전드 티니핑 악보</option>
+  </select>
 
   <div id="durationGroup">
     <button class="dur-btn active" data-dur="1">온음표</button>
@@ -162,17 +166,19 @@ const QUARTER_SEC = 60 / BPM;  // 사분음표 1박 시간(초)
 
 // 음이름 → 주파수 (C4 기준)
 const NOTE_FREQS = {
-  'C5':523.25,'B4':493.88,'A4':440.00,'G4':392.00,
+  'D5':587.33,'C5':523.25,'B4':493.88,'Bb4':466.16,'A4':440.00,'G4':392.00,
   'F4':349.23,'E4':329.63,'D4':293.66,'C4':261.63,
-  'B3':246.94,'A3':220.00,'G3':196.00,'F3':174.61,
+  'B3':246.94,'Bb3':233.08,'A3':220.00,'G3':196.00,'F3':174.61,
   'E3':164.81,'D3':146.83,'C3':130.81
 };
 
 // 음이름 → 오선지 Y 위치 (픽셀 오프셋, 오선 중간 B4 기준)
 // staffY = staffCenterY - offset
 const NOTE_OFFSETS = {
+  'D5': -LINE_STEP * 3.5,
   'C5': -LINE_STEP * 3,
   'B4': -LINE_STEP * 2.5,
+  'Bb4': -LINE_STEP * 2.5,
   'A4': -LINE_STEP * 2,
   'G4': -LINE_STEP * 1.5,
   'F4': -LINE_STEP * 1,
@@ -180,6 +186,7 @@ const NOTE_OFFSETS = {
   'D4':  LINE_STEP * 0,
   'C4':  LINE_STEP * 0.5,
   'B3':  LINE_STEP * 1,
+  'Bb3': LINE_STEP * 1,
   'A3':  LINE_STEP * 1.5,
   'G3':  LINE_STEP * 2,
   'F3':  LINE_STEP * 2.5,
@@ -557,6 +564,48 @@ document.getElementById('btnClear').addEventListener('click', () => {
   setCanvasWidth();
   drawAll();
   setStatus('악보를 지웠습니다.');
+});
+
+// ═══════════════════════════════════════════════════
+//  샘플 곡 데이터 및 로드
+// ═══════════════════════════════════════════════════
+const SAMPLES = {
+  sample1: [ // 유튜브 제공 악보 (도도 라라 솔~ 파파 솔솔 라~)
+    { name: 'C5', duration: 0.125 }, { name: 'C5', duration: 0.125 }, { name: 'A4', duration: 0.125 }, { name: 'A4', duration: 0.125 }, { name: 'G4', duration: 0.25 },
+    { name: 'F4', duration: 0.125 }, { name: 'F4', duration: 0.125 }, { name: 'G4', duration: 0.125 }, { name: 'G4', duration: 0.125 }, { name: 'A4', duration: 0.25 },
+    { name: 'Bb4', duration: 0.125 }, { name: 'Bb4', duration: 0.125 }, { name: 'A4', duration: 0.125 }, { name: 'A4', duration: 0.125 }, { name: 'G4', duration: 0.25 },
+    { name: 'F4', duration: 0.125 }, { name: 'G4', duration: 0.125 }, { name: 'A4', duration: 0.5 },
+    { name: 'F4', duration: 0.25 }, { name: 'F4', duration: 0.25 }, { name: 'G4', duration: 0.25 }, { name: 'A4', duration: 0.25 },
+    { name: 'Bb4', duration: 0.25 }, { name: 'C5', duration: 0.5 },
+    { name: 'C5', duration: 0.25 }, { name: 'C5', duration: 0.25 }, { name: 'Bb4', duration: 0.25 }, { name: 'A4', duration: 0.25 },
+    { name: 'G4', duration: 0.25 }, { name: 'A4', duration: 0.25 }, { name: 'Bb4', duration: 0.25 }, { name: 'C5', duration: 0.25 },
+    { name: 'D5', duration: 0.5 }
+  ]
+};
+
+document.getElementById('sampleSelect').addEventListener('change', (e) => {
+  const v = e.target.value;
+  if (!v) return;
+  
+  stopPlay();
+  notes = [];
+  nextSlot = 0;
+  
+  const sample = SAMPLES[v];
+  sample.forEach(n => {
+    notes.push({ name: n.name, duration: n.duration, slot: nextSlot++ });
+  });
+  
+  setCanvasWidth();
+  drawAll();
+  setStatus('샘플 곡이 불려왔습니다. 자, 들어보세요!');
+  
+  e.target.value = '';
+  
+  // 자동 재생 (약간의 여유 시간 후)
+  setTimeout(() => {
+    document.getElementById('btnPlay').click();
+  }, 500);
 });
 
 // ═══════════════════════════════════════════════════

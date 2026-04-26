@@ -24,7 +24,8 @@
       "Bash(ls:*)",
       "Bash(start:*)",
       "Bash(git pull:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(python -u telegram_bot.py)"
     ]
   }
 }
