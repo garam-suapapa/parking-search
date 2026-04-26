@@ -290,7 +290,8 @@
   </select>
 
   <div id="durationGroup">
-    <button class="dur-btn active" data-dur="1">온음표</button>
+    <button class="dur-btn" id="btnAuto" style="border-color:#ff3377;background:#ff3377;color:#fff;">✨ 자동</button>
+    <button class="dur-btn" data-dur="1">온음표</button>
     <button class="dur-btn" data-dur="0.5">이분</button>
     <button class="dur-btn" data-dur="0.25">사분</button>
     <button class="dur-btn" data-dur="0.125">팔분</button>
@@ -379,10 +380,23 @@ function buildPiano() {
       el.classList.add('active');
       playNote(k.note);
       setStatus(`${k.note} 누르는 중... (꾹 누르면 긴 음표)`);
+
+      // activePreview 건반 위쪽에 표시
+      const rect = el.getBoundingClientRect();
+      pressStartTime = pianoKeyPressStart;
+      pendingNote = k.note;
+      activePreview.style.display = 'flex';
+      activePreview.style.left = (rect.left + rect.width / 2) + 'px';
+      activePreview.style.top = rect.top + 'px';
+      updateHoldAnim();
     };
     const onUp = (e) => {
       if (pianoKeyPending !== k.note) return;
       el.classList.remove('active');
+      activePreview.style.display = 'none';
+      if (holdAnimFrame) cancelAnimationFrame(holdAnimFrame);
+      pendingNote = null;
+
       const holdMs = Date.now() - pianoKeyPressStart;
       const dur = autoMode ? holdToDuration(holdMs) : selectedDur;
       const mappedNote = NOTE_OFFSETS[k.note] ? k.note : k.note.replace(/b/, '');
@@ -673,7 +687,14 @@ const DUR_LABELS = { 1:'온음표', 0.5:'이분음표', 0.25:'사분음표', 0.1
 let selectedDur = 1;
 let autoMode = true;  // 꾹누르기 자동 모드
 
-document.querySelectorAll('.dur-btn').forEach(btn => {
+document.getElementById('btnAuto').addEventListener('click', () => {
+  autoMode = true;
+  document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btnAuto').classList.add('active');
+  document.getElementById('holdInfo').textContent = '꾹 누르면 자동감지';
+});
+
+document.querySelectorAll('.dur-btn[data-dur]').forEach(btn => {
   btn.addEventListener('click', () => {
     selectedDur = parseFloat(btn.dataset.dur);
     autoMode = false;
