@@ -7,45 +7,83 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    background: url('tiniping/ui.png') center/cover no-repeat;
-    color: #333;
-    font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+    background: linear-gradient(135deg, #fff0f9 0%, #ffcbe6 50%, #e0c3fc 100%);
+    color: #4a4a4a;
+    font-family: 'Segoe UI', 'Malgun Gothic', 'Comic Sans MS', sans-serif;
     display: flex;
     flex-direction: column;
     height: 100dvh;
     overflow: hidden;
     user-select: none;
+    position: relative;
+  }
+  body::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: url('tiniping/ui.png') center/cover no-repeat;
+    opacity: 0.12;
+    z-index: 0;
+    pointer-events: none;
   }
 
   /* ── 상단 툴바 ── */
   #toolbar {
+    position: relative;
+    z-index: 10;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 14px;
-    background: rgba(255, 255, 255, 0.85);
-    border-bottom: 2px solid #ff9a9e;
+    gap: 12px;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.45);
+    box-shadow: 0 4px 15px rgba(255, 105, 180, 0.15);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.7);
     flex-shrink: 0;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
   }
-  #toolbar h1 { font-size: 1rem; color: #ff5277; margin-right: 4px; font-weight: 800; }
+  #toolbar h1 { 
+    font-size: 1.3rem; 
+    color: #ff3377; 
+    margin-right: 10px; 
+    font-weight: 900; 
+    text-shadow: 2px 2px 0px #fff, 0 0 10px rgba(255,105,180,0.5);
+    letter-spacing: -0.5px;
+  }
 
   .btn {
-    padding: 6px 14px;
+    padding: 8px 16px;
     border: none;
-    border-radius: 8px;
+    border-radius: 20px;
     cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: bold;
-    transition: all .2s;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    font-size: 0.9rem;
+    font-weight: 800;
+    transition: all .3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1), inset 0 2px 0 rgba(255,255,255,0.4);
+    position: relative;
+    overflow: hidden;
   }
-  .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
-  .btn:active { transform: translateY(1px); box-shadow: none; opacity: .8; }
+  .btn:hover { 
+    transform: translateY(-2px) scale(1.03); 
+    box-shadow: 0 6px 15px rgba(0,0,0,0.15), inset 0 2px 0 rgba(255,255,255,0.5); 
+  }
+  .btn:active { 
+    transform: translateY(1px) scale(0.97); 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+  }
   
-  #btnPlay  { background: #ff758c; color: #fff; }
-  #btnStop  { background: #a18cd1; color: #fff; }
-  #btnClear { background: #fbc2eb; color: #555; }
+  #btnPlay  { background: linear-gradient(to bottom, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); border: 1px solid #ff85a2; }
+  #btnStop  { background: linear-gradient(to bottom, #a18cd1 0%, #fbc2eb 100%); color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); border: 1px solid #a18cd1; }
+  #btnClear { background: #fff; color: #ff5277; border: 2px solid #ffb8d1; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+
+  #sampleSelect {
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-weight: 800;
+    outline: none;
+    transition: all .3s;
+  }
+  #sampleSelect:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 6px 15px rgba(255,105,180,0.15); }
 
   /* 음표 길이 선택 */
   #durationGroup {
@@ -54,29 +92,34 @@
     margin-left: auto;
   }
   .dur-btn {
-    padding: 5px 10px;
-    border: 2px solid #ffb8d1;
-    border-radius: 8px;
-    background: #fff;
+    padding: 6px 12px;
+    border: 2px solid rgba(255, 184, 209, 0.7);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.6);
     color: #ff5277;
     cursor: pointer;
-    font-size: 0.78rem;
-    font-weight: bold;
+    font-size: 0.8rem;
+    font-weight: 800;
     transition: all .2s;
+    backdrop-filter: blur(4px);
   }
-  .dur-btn:hover { background: #ffedf2; }
+  .dur-btn:hover { background: rgba(255, 255, 255, 0.9); transform: translateY(-1px); }
   .dur-btn.active {
-    border-color: #ff5277;
-    background: #ff5277;
+    border-color: #ff3377;
+    background: #ff3377;
     color: #fff;
+    box-shadow: 0 4px 10px rgba(255, 51, 119, 0.3);
   }
 
   #holdInfo {
-    font-size: 0.75rem;
-    color: #ff5277;
-    margin-left: 6px;
+    font-size: 0.8rem;
+    color: #d12e62;
+    margin-left: 8px;
     align-self: center;
-    font-weight: bold;
+    font-weight: 900;
+    background: rgba(255, 255, 255, 0.6);
+    padding: 4px 10px;
+    border-radius: 12px;
   }
 
   /* ── 오선지 스크롤 영역 ── */
@@ -85,15 +128,21 @@
     overflow-x: auto;
     overflow-y: hidden;
     position: relative;
-    background: rgba(255, 255, 255, 0.4);
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.3);
     cursor: crosshair;
     -webkit-overflow-scrolling: touch;
-    backdrop-filter: blur(3px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    margin: 15px;
+    border-radius: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05), inset 0 0 0 2px rgba(255,255,255,0.6);
   }
 
   #staffCanvas {
     display: block;
     height: 100%;
+    outline: none;
   }
 
   /* 음표 미리보기 (마우스 hover 가이드라인) */
@@ -101,22 +150,28 @@
     position: absolute;
     pointer-events: none;
     background: url('tiniping/ppipo.png') center/cover no-repeat;
-    opacity: 0.7;
+    opacity: 0.8;
     display: none;
     transform: translate(-50%, -50%);
-    filter: drop-shadow(0 0 5px rgba(255, 105, 135, 0.8));
+    filter: drop-shadow(0 4px 8px rgba(255, 51, 119, 0.4));
+    transition: width 0.1s, height 0.1s;
   }
 
   /* ── 하단 재생 바 ── */
   #statusBar {
-    padding: 8px 14px;
-    background: rgba(255, 255, 255, 0.85);
-    border-top: 2px solid #ff9a9e;
-    font-size: 0.8rem;
-    color: #ff5277;
-    font-weight: bold;
+    position: relative;
+    z-index: 10;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.45);
+    border-top: 2px solid rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+    color: #ff3377;
+    font-weight: 800;
+    text-align: center;
     flex-shrink: 0;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    box-shadow: 0 -4px 15px rgba(255, 105, 180, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 </style>
 </head>
@@ -209,60 +264,66 @@ const statusBar = document.getElementById('statusBar');
 
 let staffCenterY = 0;   // 오선 중심 Y (D4 위치)
 let canvasH = 0;
+let canvasW = 0;
 
 function resize() {
   canvasH = wrapper.clientHeight;
-  canvas.height = canvasH;
   // 오선 중심: 캔버스 세로 중앙
   staffCenterY = canvasH / 2;
   setCanvasWidth();
-  drawAll();
 }
 
 function setCanvasWidth() {
   const needed = CLEF_WIDTH + notes.length * NOTE_SLOT_W + NOTE_SLOT_W * 3;
-  canvas.width = Math.max(MIN_CANVAS_W, needed);
+  canvasW = Math.max(MIN_CANVAS_W, needed);
+  
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvasW * dpr;
+  canvas.height = canvasH * dpr;
+  canvas.style.width = canvasW + 'px';
+  canvas.style.height = canvasH + 'px';
+  
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // Scale the context to match DPR
+  drawAll();
 }
 
 // ═══════════════════════════════════════════════════
 //  그리기
 // ═══════════════════════════════════════════════════
 function drawStaff() {
-  ctx.clearRect(0, 0, canvas.width, canvasH);
+  ctx.clearRect(0, 0, canvasW, canvasH);
 
   // 음이름 가이드 (왼쪽)
-  ctx.font = '11px monospace';
-  ctx.fillStyle = '#aaa';
+  ctx.font = 'bold 12px "Malgun Gothic", sans-serif';
+  ctx.fillStyle = 'rgba(150, 100, 150, 0.8)';
   NOTE_NAMES.forEach(name => {
     const y = staffCenterY + NOTE_OFFSETS[name];
-    ctx.fillText(name, 4, y + 4);
+    ctx.fillText(name, 12, y + 4);
   });
 
   // 오선 5개
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(255, 184, 209, 0.6)';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
   for (let i = -2; i <= 2; i++) {
-    const y = staffCenterY + i * LINE_STEP - LINE_STEP * 0.5 + LINE_STEP * 0.5;
-    // 오선은 E4(위) ~ F4(아래) 사이 5줄
-    // 실제로는 E4, G4, B4, D5, F5 위치... 다시 정의
     const lineY = staffCenterY + NOTE_OFFSETS['E4'] + i * LINE_STEP;
     ctx.beginPath();
     ctx.moveTo(CLEF_WIDTH - 10, lineY);
-    ctx.lineTo(canvas.width - 10, lineY);
+    ctx.lineTo(canvasW - 10, lineY);
     ctx.stroke();
   }
 
   // 높은음자리표 (간단히 텍스트로)
-  ctx.font = 'bold 70px serif';
-  ctx.fillStyle = '#222';
+  ctx.font = 'bold 75px serif';
+  ctx.fillStyle = 'rgba(255, 105, 180, 0.7)';
   ctx.fillText('𝄞', 8, staffCenterY + NOTE_OFFSETS['E4'] + LINE_STEP * 4 + 10);
 
   // 세로 마감선
   ctx.beginPath();
   ctx.moveTo(CLEF_WIDTH - 12, staffCenterY + NOTE_OFFSETS['E4']);
   ctx.lineTo(CLEF_WIDTH - 12, staffCenterY + NOTE_OFFSETS['E4'] + LINE_STEP * 4);
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(255, 184, 209, 0.8)';
+  ctx.lineWidth = 3.5;
   ctx.stroke();
 
   // 보조선 (C4, C5 등)
@@ -275,18 +336,18 @@ function drawLedgerLines() {
   // C5 - 오선 위 보조선
   const c5y = staffCenterY + NOTE_OFFSETS['C5'];
 
-  ctx.strokeStyle = '#777';
-  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = 'rgba(255, 150, 180, 0.6)';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
 
-  // 음표가 있는 위치에만 보조선 그리기
   const ledgerNotes = { 'C4': c4y, 'C5': c5y };
 
   notes.forEach(note => {
     if (ledgerNotes[note.name]) {
       const x = noteX(note.slot);
       ctx.beginPath();
-      ctx.moveTo(x - 14, ledgerNotes[note.name]);
-      ctx.lineTo(x + 14, ledgerNotes[note.name]);
+      ctx.moveTo(x - 18, ledgerNotes[note.name]);
+      ctx.lineTo(x + 18, ledgerNotes[note.name]);
       ctx.stroke();
     }
   });
@@ -306,32 +367,37 @@ function drawNote(note, highlight = false) {
 
   ctx.save();
   
-  const imgW = 32;
-  const imgH = 32;
+  const imgW = 38;
+  const imgH = 38;
   const imgX = x - imgW / 2;
   const imgY = y - imgH / 2;
 
-  // 재생 하이라이트
+  // 개선된 그림자/마법 효과
+  ctx.shadowColor = highlight ? '#ff3377' : 'rgba(255, 105, 180, 0.5)';
+  ctx.shadowBlur = highlight ? 20 : 6;
+  ctx.shadowOffsetY = 2;
+
   if (highlight) {
-    ctx.shadowColor = '#ff5277';
-    ctx.shadowBlur = 15;
-    ctx.fillStyle = 'rgba(255, 82, 119, 0.3)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.beginPath();
     ctx.arc(x, y, 22, 0, Math.PI * 2);
     ctx.fill();
+    
+    ctx.translate(x, y);
+    ctx.scale(1.15, 1.15);
+    ctx.translate(-x, -y);
   }
 
   ctx.drawImage(noteImage, imgX, imgY, imgW, imgH);
   
-  // 길이를 구별하기 위한 텍스트
   const durMap = { 1:'온', 0.5:'2분', 0.25:'4분', 0.125:'8분' };
   const durStr = durMap[note.duration] || '';
   
   ctx.shadowBlur = 0;
-  ctx.fillStyle = '#ff5277';
-  ctx.font = 'bold 11px sans-serif';
+  ctx.fillStyle = '#ff3377';
+  ctx.font = 'bold 12px "Malgun Gothic", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(durStr, x, y + imgH / 2 + 12);
+  ctx.fillText(durStr, x, y + imgH / 2 + 15);
 
   ctx.restore();
 }
