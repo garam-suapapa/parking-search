@@ -401,6 +401,8 @@ function buildPiano() {
 // 음이름 → 오선지 Y 위치 (픽셀 오프셋, 오선 중간 B4 기준)
 // staffY = staffCenterY - offset
 const NOTE_OFFSETS = {
+  'F5': -LINE_STEP * 4.5,
+  'E5': -LINE_STEP * 4,
   'D5': -LINE_STEP * 3.5,
   'C5': -LINE_STEP * 3,
   'B4': -LINE_STEP * 2.5,
@@ -607,6 +609,8 @@ let nextSlot = 0;
 //  Web Audio
 // ═══════════════════════════════════════════════════
 let audioCtx = null;
+let activeOscillators = [];
+
 function getAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -630,7 +634,16 @@ function playFreq(freq, durationSec, startTime = 0) {
   gain.gain.exponentialRampToValueAtTime(0.001, t + durationSec * 0.9);
 
   osc.start(t);
-  osc.stop(t + durationSec);
+  try { osc.stop(t + durationSec); } catch(e) {}
+  
+  const obj = { osc, gain };
+  activeOscillators.push(obj);
+  
+  const delayMs = (t - ac.currentTime + durationSec) * 1000 + 100;
+  setTimeout(() => {
+    const idx = activeOscillators.indexOf(obj);
+    if (idx > -1) activeOscillators.splice(idx, 1);
+  }, delayMs);
 }
 
 function playNote(name) {
@@ -846,6 +859,17 @@ function stopPlay() {
   isPlaying = false;
   playTimers.forEach(t => clearTimeout(t));
   playTimers = [];
+  
+  // 생성된 모든 오디오 노드 즉각 폐기하여 다중 재생 및 지속 재생 차단
+  activeOscillators.forEach(obj => {
+    try {
+      obj.gain.disconnect();
+      obj.osc.stop();
+      obj.osc.disconnect();
+    } catch(e) {}
+  });
+  activeOscillators = [];
+  
   drawAll();
   setStatus('정지됨');
 }
