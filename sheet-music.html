@@ -323,7 +323,7 @@ const LINE_STEP   = STEP * 2;
 const CLEF_WIDTH  = 70;
 const NOTE_SLOT_W = 60;
 const MIN_CANVAS_W = 1200;
-const BPM         = 80;
+const BPM         = 150;
 const QUARTER_SEC = 60 / BPM;
 
 // 음이름 → 주파수
@@ -412,8 +412,10 @@ function playFreq(freq, durationSec, startTime = 0) {
   osc.type = 'triangle';
   osc.frequency.value = freq;
   gain.gain.setValueAtTime(0.001, t);
-  gain.gain.exponentialRampToValueAtTime(0.6, t + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.001, t + durationSec * 0.9);
+  gain.gain.exponentialRampToValueAtTime(0.5, t + 0.02);
+  // 음이 뚝 끊기지 않고 부드럽게 이어지도록 서스테인(Sustain) 유지
+  gain.gain.setValueAtTime(0.5, t + durationSec * 0.8);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + durationSec);
   osc.start(t);
   try { osc.stop(t + durationSec); } catch(e) {}
   activeOscillators.push({ osc, gain });
@@ -843,55 +845,25 @@ const SAMPLES = {
     {name:'D5',duration:.5}
   ],
   sample2: [
-    // ── 반짝반짝 빛이나 (M1: Bbadd2) ──
-    {name:'F5',duration:.125},{name:'F5',duration:.125},{name:'C5',duration:.125},{name:'C5',duration:.125},
-    {name:'D5',duration:.125},{name:'C5',duration:.125},{name:'Bb4',duration:.125},
-    // ── 는 별처럼 (M2: C) ──
-    {name:'Bb4',duration:.125},{name:'A4',duration:.125},{name:'G4',duration:.25},{name:'F4',duration:.25},
-    // ── 내가너의 (M3: A/C#) ──
-    {name:'F4',duration:.125},{name:'E4',duration:.125},{name:'F4',duration:.125},{name:'G4',duration:.125},
-    // ── 별이되어 (M4: Dm C) ──
-    {name:'A4',duration:.125},{name:'Bb4',duration:.125},{name:'A4',duration:.125},{name:'G4',duration:.125},
-    // ── 줄게 (M5: G/B) ──
-    {name:'F4',duration:.5},
-    // ── 어줄게 → 캐치캐치 슈팅스타 티니핑 (M5-6: Bb C/Bb Bb) ──
-    {name:'Bb4',duration:.125},{name:'C5',duration:.125},{name:'Bb4',duration:.125},{name:'C5',duration:.125},
-    {name:'D5',duration:.125},{name:'C5',duration:.125},{name:'Bb4',duration:.25},
-    {name:'G4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.5},
-    // ── 피리링 피리링 (M7) ──
-    {name:'F5',duration:.125},{name:'E5',duration:.125},{name:'D5',duration:.125},{name:'C5',duration:.125},
-    {name:'F5',duration:.125},{name:'E5',duration:.125},{name:'D5',duration:.125},{name:'C5',duration:.125},
-    // ── 피리링캐치캐치 (M8) ──
-    {name:'Bb4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.125},{name:'C5',duration:.125},
-    {name:'D5',duration:.125},{name:'C5',duration:.125},
-    // ── 피리리링 피리링 (M9-10: Csus4) ──
-    {name:'Bb4',duration:.125},{name:'C5',duration:.125},
-    {name:'D5',duration:.125},{name:'C5',duration:.125},{name:'Bb4',duration:.125},{name:'A4',duration:.125},
-    {name:'Bb4',duration:.5},
-    // ── 사랑의하 츄핑 (M11-12: F, Fsus4/G) ──
-    {name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
-    {name:'G4',duration:.125},{name:'A4',duration:.125},{name:'F4',duration:.25},
-    // ── 치유의빛 나핑 (M13: Fsus4/Bb) ──
-    {name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
-    {name:'G4',duration:.125},{name:'A4',duration:.125},{name:'F4',duration:.25},
-    // ── 소망의초 롱핑 (M14: Fm/Ab) ──
-    {name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
-    {name:'G4',duration:.125},{name:'A4',duration:.125},{name:'F4',duration:.25},
-    // ── 밝음의반 짝핑 (M15: /C) ──
-    {name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
-    {name:'G4',duration:.125},{name:'A4',duration:.125},{name:'F4',duration:.25},
-    // ── 극복의깡 총핑 (M16: F Fsus4/G) ──
-    {name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
-    {name:'G4',duration:.125},{name:'A4',duration:.125},{name:'F4',duration:.25},
-    // ── 활동의홀 라핑 (M17: Fsus4/G) ──
-    {name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
-    {name:'G4',duration:.125},{name:'A4',duration:.125},{name:'F4',duration:.25},
-    // ── 나놈의나 놈핑 (M18: Fsus4/Bb) ──
-    {name:'Bb4',duration:.125},{name:'C5',duration:.125},{name:'D5',duration:.125},{name:'Bb4',duration:.125},
-    {name:'C5',duration:.125},{name:'D5',duration:.125},{name:'Bb4',duration:.25},
-    // ── 보냄의 (M19: F) ──
+    // 진짜 악보에 적힌 정확한 멜로디 (PDF 1~6마디 기반)
+    // ── 반짝반짝 빛이나 ──
+    {name:'F4',duration:.125},{name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},
+    {name:'Bb4',duration:.25}, {name:'A4',duration:.125},{name:'G4',duration:.125},
+    // ── 는 별처럼 ──
+    {name:'A4',duration:.125},{name:'A4',duration:.125},{name:'G4',duration:.25},{name:'F4',duration:.25},
+    {name:'REST',duration:.25},
+    // ── 내가너의 ──
+    {name:'F4',duration:.125},{name:'F4',duration:.125},{name:'F4',duration:.125},{name:'F4',duration:.125},
+    // ── 별이되어 ──
+    {name:'G4',duration:.25},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
+    // ── 줄게 ──
+    {name:'A4',duration:.125},{name:'G4',duration:.125},{name:'F4',duration:.5},
+    {name:'REST',duration:.125},
+    // ── 캐치캐치 슈팅스타 ──
+    {name:'D5',duration:.125},{name:'D5',duration:.125},{name:'C5',duration:.125},{name:'C5',duration:.125},
     {name:'Bb4',duration:.125},{name:'A4',duration:.125},{name:'G4',duration:.125},{name:'F4',duration:.125},
-    {name:'G4',duration:.25},{name:'F4',duration:.5}
+    // ── 티니핑 ──
+    {name:'E4',duration:.125},{name:'F4',duration:.25},{name:'G4',duration:.5}
   ]
 };
 
