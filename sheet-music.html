@@ -344,20 +344,23 @@ const PIANO_KEYS = [
   { note: 'Eb5', white: false }, { note: 'E5', white: true }, { note: 'F5', white: true }
 ];
 
+let pianoKeyPressStart = 0;
+let pianoKeyPending = null;
+
 function buildPiano() {
   const wrapper = document.getElementById('pianoWrapper');
   wrapper.innerHTML = '';
   const container = document.createElement('div');
   container.className = 'key-container';
   wrapper.appendChild(container);
-  
-  const whiteKeyWidth = 47; // 45 width + 2 margin
+
+  const whiteKeyWidth = 47;
   let whiteCount = 0;
-  
+
   PIANO_KEYS.forEach(k => {
     const el = document.createElement('div');
     el.dataset.note = k.note;
-    
+
     if (k.white) {
       el.className = 'key-white';
       el.innerHTML = `<div class="key-label">${k.note}</div>`;
@@ -368,20 +371,31 @@ function buildPiano() {
       el.style.left = (whiteCount * whiteKeyWidth) + 'px';
       container.appendChild(el);
     }
-    
-    // 건반 입력 시 터치 스크롤 방지
-    const press = (e) => { e.preventDefault(); pressPianoKey(k.note); };
-    el.addEventListener('mousedown', press);
-    el.addEventListener('touchstart', press, {passive: false});
-  });
-}
 
-function pressPianoKey(noteName) {
-  playNote(noteName);
-  // 검은건반 임시 매핑(조표가 없으므로 화면에는 가장 가까운 원음으로 표시)
-  const mappedNote = NOTE_OFFSETS[noteName] ? noteName : noteName.replace(/b/,''); 
-  addNote(mappedNote, selectedDur);
-  setStatus(`${noteName} 피아노 건반 연주!`);
+    const onDown = (e) => {
+      e.preventDefault();
+      pianoKeyPressStart = Date.now();
+      pianoKeyPending = k.note;
+      el.classList.add('active');
+      playNote(k.note);
+      setStatus(`${k.note} 누르는 중... (꾹 누르면 긴 음표)`);
+    };
+    const onUp = (e) => {
+      if (pianoKeyPending !== k.note) return;
+      el.classList.remove('active');
+      const holdMs = Date.now() - pianoKeyPressStart;
+      const dur = autoMode ? holdToDuration(holdMs) : selectedDur;
+      const mappedNote = NOTE_OFFSETS[k.note] ? k.note : k.note.replace(/b/, '');
+      addNote(mappedNote, dur);
+      setStatus(`${k.note} ${DUR_LABELS[dur]} 입력 완료`);
+      pianoKeyPending = null;
+    };
+
+    el.addEventListener('mousedown', onDown);
+    el.addEventListener('touchstart', onDown, { passive: false });
+    el.addEventListener('mouseup', onUp);
+    el.addEventListener('touchend', onUp);
+  });
 }
 
 // 음이름 → 오선지 Y 위치 (픽셀 오프셋, 오선 중간 B4 기준)
