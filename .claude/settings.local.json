@@ -20,7 +20,11 @@
       "Read(//c/Program Files/**)",
       "Bash(python -c \"import docx; print\\(''ok''\\)\")",
       "Bash(python3:*)",
-      "Bash(python -c \"from docx import Document; doc = Document\\(''1. 7월식단 만3~5세 기본형_.docx''\\); print\\(''Tables:'', len\\(doc.tables\\)\\)\")"
+      "Bash(python -c \"from docx import Document; doc = Document\\(''1. 7월식단 만3~5세 기본형_.docx''\\); print\\(''Tables:'', len\\(doc.tables\\)\\)\")",
+      "Bash(ls:*)",
+      "Bash(start:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)"
     ]
   }
 }
