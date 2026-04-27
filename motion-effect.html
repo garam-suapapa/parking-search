@@ -89,7 +89,7 @@
 
 <div id="sensitivity">
   <label>감도</label>
-  <input type="range" id="thresh" min="5" max="80" value="25">
+  <input type="range" id="thresh" min="5" max="80" value="20">
 </div>
 
 <div id="ui">
@@ -104,46 +104,45 @@ const ctx = canvas.getContext('2d');
 const msg = document.getElementById('msg');
 const threshSlider = document.getElementById('thresh');
 
-// 소형 처리용 캔버스 (성능용)
+// 처리용 캔버스 (해상도 높임 - 엣지 품질)
 const proc = document.createElement('canvas');
 const pctx = proc.getContext('2d', { willReadFrequently: true });
-const PW = 80, PH = 60;
+const PW = 120, PH = 90;
 proc.width = PW; proc.height = PH;
 
 let prevData = null;
 let particles = [];
 let facing = 'user';
 
-// ── 테마 정의 ──────────────────────────────────────────
+// ── 테마 (색상만 - 움직임은 윤곽 모드 고정) ──────────────
 const themes = [
-  { name: '🔥 불꽃', colors: ['#ff4500','#ff6b35','#ffd700','#ff8c00'], gravity: 0.15, spread: 9, size: [3,8], trail: 0.18 },
-  { name: '💎 다이아', colors: ['#00d2d3','#54a0ff','#a29bfe','#fd79a8'], gravity: -0.05, spread: 7, size: [2,6], trail: 0.12 },
-  { name: '🌿 자연', colors: ['#00b894','#55efc4','#fdcb6e','#6c5ce7'], gravity: 0.08, spread: 8, size: [3,7], trail: 0.15 },
-  { name: '⚡ 번개', colors: ['#fdfd96','#fffde7','#fff9c4','#ffeb3b'], gravity: 0.0, spread: 12, size: [1,4], trail: 0.25 },
-  { name: '🌸 벚꽃', colors: ['#ffb3c6','#ff8fa3','#ffccd5','#ff4d6d'], gravity: 0.04, spread: 6, size: [4,10], trail: 0.10 },
+  { name: '🔥 불꽃', colors: ['#ff4500','#ff6b35','#ffd700','#ff8c00'] },
+  { name: '💎 다이아', colors: ['#00d2d3','#54a0ff','#a29bfe','#fd79a8'] },
+  { name: '🌿 자연', colors: ['#00b894','#55efc4','#fdcb6e','#6c5ce7'] },
+  { name: '⚡ 번개', colors: ['#ffffff','#e0f0ff','#c9e8ff','#ffeb3b'] },
+  { name: '🌸 벚꽃', colors: ['#ffb3c6','#ff8fa3','#ffccd5','#ff4d6d'] },
 ];
 let themeIdx = 0;
 
-// ── 파티클 ──────────────────────────────────────────────
+// ── 파티클 (윤곽 전용 - 퍼짐 최소) ────────────────────────
 class Particle {
   constructor(x, y) {
-    const t = themes[themeIdx];
+    const colors = themes[themeIdx].colors;
     this.x = x;
     this.y = y;
-    this.vx = (Math.random() - 0.5) * t.spread;
-    this.vy = (Math.random() - 0.5) * t.spread - t.spread * 0.3;
-    this.life = 1;
-    this.decay = 0.018 + Math.random() * 0.025;
-    this.r = t.size[0] + Math.random() * (t.size[1] - t.size[0]);
-    this.color = t.colors[Math.floor(Math.random() * t.colors.length)];
-    this.gravity = t.gravity;
+    this.vx = (Math.random() - 0.5) * 1.8;
+    this.vy = (Math.random() - 0.5) * 1.8;
+    this.life = 0.85 + Math.random() * 0.15;
+    this.decay = 0.014 + Math.random() * 0.014;
+    this.r = 1.5 + Math.random() * 2.5;
+    this.color = colors[Math.floor(Math.random() * colors.length)];
   }
 
   update() {
     this.x += this.vx;
     this.y += this.vy;
-    this.vy += this.gravity;
-    this.vx *= 0.97;
+    this.vx *= 0.90;
+    this.vy *= 0.90;
     this.life -= this.decay;
   }
 
@@ -151,80 +150,116 @@ class Particle {
     ctx.save();
     ctx.globalAlpha = Math.max(0, this.life);
     ctx.shadowColor = this.color;
-    ctx.shadowBlur = this.r * 2;
+    ctx.shadowBlur = this.r * 3;
     ctx.fillStyle = this.color;
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.r * this.life, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
 }
 
-// ── 모션 감지 ──────────────────────────────────────────
-function detectMotion() {
+// ── Sobel 엣지 감지 ────────────────────────────────────────
+function sobelEdge(data) {
+  const edge = new Float32Array(PW * PH);
+  for (let y = 1; y < PH - 1; y++) {
+    for (let x = 1; x < PW - 1; x++) {
+      const luma = (dx, dy) => {
+        const i = ((y + dy) * PW + (x + dx)) * 4;
+        return data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
+      };
+      const gx = -luma(-1,-1) - 2*luma(-1,0) - luma(-1,1)
+                + luma( 1,-1) + 2*luma( 1,0) + luma( 1,1);
+      const gy = -luma(-1,-1) - 2*luma(0,-1) - luma(1,-1)
+                + luma(-1, 1) + 2*luma(0, 1) + luma(1, 1);
+      edge[y * PW + x] = Math.sqrt(gx*gx + gy*gy) / 255;
+    }
+  }
+  return edge;
+}
+
+// ── 모션 감지 + 윤곽 추출 ──────────────────────────────────
+function detectContour() {
   if (video.readyState < 2) return [];
 
   pctx.drawImage(video, 0, 0, PW, PH);
   const { data } = pctx.getImageData(0, 0, PW, PH);
   const thresh = parseInt(threshSlider.value);
-  const points = [];
 
+  // 1. 모션 마스크
+  const motion = new Uint8Array(PW * PH);
   if (prevData) {
     for (let i = 0; i < PW * PH; i++) {
       const b = i * 4;
       const diff = (Math.abs(data[b]   - prevData[b])
                   + Math.abs(data[b+1] - prevData[b+1])
                   + Math.abs(data[b+2] - prevData[b+2])) / 3;
+      if (diff > thresh) motion[i] = 1;
+    }
+  }
+  prevData = new Uint8ClampedArray(data);
 
-      if (diff > thresh) {
-        const rawX = (i % PW) / PW;
-        const py    = Math.floor(i / PW) / PH;
-        // 전면 카메라는 거울 반전
-        const px = (facing === 'user') ? (1 - rawX) : rawX;
-        points.push({ px, py, intensity: Math.min(diff / 120, 1) });
+  // 2. 모션 마스크 팽창 (radius=4 → 엣지가 경계 근처에 있어도 잡힘)
+  const dilated = new Uint8Array(PW * PH);
+  const R = 4;
+  for (let y = 0; y < PH; y++) {
+    for (let x = 0; x < PW; x++) {
+      loop:
+      for (let dy = -R; dy <= R; dy++) {
+        for (let dx = -R; dx <= R; dx++) {
+          const ny = y + dy, nx = x + dx;
+          if (ny >= 0 && ny < PH && nx >= 0 && nx < PW && motion[ny*PW+nx]) {
+            dilated[y*PW+x] = 1;
+            break loop;
+          }
+        }
       }
     }
   }
 
-  prevData = new Uint8ClampedArray(data);
+  // 3. Sobel 엣지 + 팽창 영역 교집합
+  const edge = sobelEdge(data);
+  const EDGE_THRESH = 0.22;
+  const points = [];
+
+  for (let i = 0; i < PW * PH; i++) {
+    if (!dilated[i] || edge[i] < EDGE_THRESH) continue;
+    const rawX = (i % PW) / PW;
+    const py   = Math.floor(i / PW) / PH;
+    const px   = (facing === 'user') ? (1 - rawX) : rawX;
+    points.push({ px, py });
+  }
+
   return points;
 }
 
-// ── 메인 루프 ──────────────────────────────────────────
+// ── 메인 루프 ──────────────────────────────────────────────
 function loop() {
   requestAnimationFrame(loop);
 
   const W = canvas.width, H = canvas.height;
-  const t = themes[themeIdx];
 
-  // 잔상 효과
-  ctx.fillStyle = `rgba(0,0,0,${t.trail})`;
+  // 잔상 (느리게 지워서 윤곽이 빛나 보임)
+  ctx.fillStyle = 'rgba(0,0,0,0.16)';
   ctx.fillRect(0, 0, W, H);
 
-  // 모션 → 파티클 생성
-  const points = detectMotion();
-  for (const { px, py, intensity } of points) {
-    if (Math.random() > 0.12) continue; // 샘플링 (성능)
-    const count = Math.ceil(intensity * 4);
-    for (let i = 0; i < count; i++) {
-      particles.push(new Particle(px * W, py * H));
-    }
+  // 윤곽 → 파티클 생성
+  const points = detectContour();
+  for (const { px, py } of points) {
+    if (Math.random() > 0.35) continue;
+    particles.push(new Particle(px * W, py * H));
   }
 
-  // 파티클 한계
-  if (particles.length > 1200) particles = particles.slice(-900);
+  if (particles.length > 1800) particles = particles.slice(-1400);
 
-  // 업데이트 & 렌더
   particles = particles.filter(p => p.life > 0);
   for (const p of particles) { p.update(); p.draw(); }
 }
 
-// ── 카메라 시작 ──────────────────────────────────────────
+// ── 카메라 시작 ────────────────────────────────────────────
 async function startCamera() {
   try {
-    if (video.srcObject) {
-      video.srcObject.getTracks().forEach(t => t.stop());
-    }
+    if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } },
       audio: false,
@@ -237,7 +272,7 @@ async function startCamera() {
   }
 }
 
-// ── UI 이벤트 ──────────────────────────────────────────
+// ── UI ─────────────────────────────────────────────────────
 document.getElementById('themeBtn').addEventListener('click', () => {
   themeIdx = (themeIdx + 1) % themes.length;
   document.getElementById('themeBtn').textContent = themes[themeIdx].name;
@@ -249,7 +284,6 @@ document.getElementById('camBtn').addEventListener('click', () => {
   startCamera();
 });
 
-// ── 리사이즈 ──────────────────────────────────────────
 function resize() {
   canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -257,7 +291,6 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// ── 시작 ──────────────────────────────────────────────
 startCamera();
 loop();
 </script>
