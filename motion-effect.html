@@ -7,114 +7,83 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #000; overflow: hidden; touch-action: none; }
-
     #video {
-      position: fixed;
-      width: 100%; height: 100%;
-      object-fit: cover;
-      transform: scaleX(-1);
+      position: fixed; width: 100%; height: 100%;
+      object-fit: cover; transform: scaleX(-1);
     }
-
-    #fx {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      pointer-events: none;
-    }
-
+    #fx { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
     #ui {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 12px;
-      z-index: 10;
+      position: fixed; bottom: 30px; left: 50%;
+      transform: translateX(-50%); display: flex; gap: 12px; z-index: 10;
     }
-
     button {
-      padding: 12px 22px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-radius: 30px;
-      background: rgba(0,0,0,0.4);
-      color: #fff;
-      font-size: 15px;
-      font-weight: bold;
-      backdrop-filter: blur(8px);
-      cursor: pointer;
-      transition: background 0.2s;
+      padding: 12px 22px; border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 30px; background: rgba(0,0,0,0.4); color: #fff;
+      font-size: 15px; font-weight: bold; backdrop-filter: blur(8px);
+      cursor: pointer; transition: background 0.2s;
     }
     button:active { background: rgba(255,255,255,0.2); }
-
     #msg {
-      position: fixed;
-      top: 50%;
-      left: 50%;
+      position: fixed; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      color: rgba(255,255,255,0.7);
-      font-size: 18px;
-      text-align: center;
-      font-family: sans-serif;
-      pointer-events: none;
-      z-index: 10;
+      color: rgba(255,255,255,0.7); font-size: 18px;
+      text-align: center; font-family: sans-serif;
+      pointer-events: none; z-index: 10;
     }
-
+    #score {
+      position: fixed; top: 20px; left: 20px;
+      color: #fff; font-size: 22px; font-family: sans-serif;
+      font-weight: bold; z-index: 10;
+      text-shadow: 0 0 10px rgba(255,200,0,0.8);
+    }
     #sensitivity {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 8px;
-      z-index: 10;
+      position: fixed; top: 20px; right: 20px;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 10;
     }
-    #sensitivity label {
-      color: rgba(255,255,255,0.7);
-      font-size: 12px;
-      font-family: sans-serif;
-    }
-    input[type=range] {
-      width: 100px;
-      accent-color: #ff6b6b;
-    }
+    #sensitivity label { color: rgba(255,255,255,0.7); font-size: 12px; font-family: sans-serif; }
+    input[type=range] { width: 100px; accent-color: #ff6b6b; }
   </style>
 </head>
 <body>
 
 <video id="video" autoplay playsinline muted></video>
 <canvas id="fx"></canvas>
-
 <div id="msg">카메라 권한을 허용해주세요 📷</div>
-
+<div id="score">💥 0</div>
 <div id="sensitivity">
   <label>감도</label>
   <input type="range" id="thresh" min="5" max="80" value="20">
 </div>
-
 <div id="ui">
   <button id="themeBtn">🔥 불꽃</button>
   <button id="camBtn">🔄 전환</button>
 </div>
 
 <script>
-const video = document.getElementById('video');
-const canvas = document.getElementById('fx');
-const ctx = canvas.getContext('2d');
-const msg = document.getElementById('msg');
+const video   = document.getElementById('video');
+const canvas  = document.getElementById('fx');
+const ctx     = canvas.getContext('2d');
+const msg     = document.getElementById('msg');
+const scoreEl = document.getElementById('score');
 const threshSlider = document.getElementById('thresh');
 
-// 처리용 캔버스 (해상도 높임 - 엣지 품질)
 const proc = document.createElement('canvas');
 const pctx = proc.getContext('2d', { willReadFrequently: true });
 const PW = 120, PH = 90;
 proc.width = PW; proc.height = PH;
 
-let prevData = null;
-let particles = [];
-let facing = 'user';
+let prevData   = null;
+let facing     = 'user';
+let score      = 0;
+let lastEdge   = null;
+let lastDilated = null;
 
-// ── 테마 (색상만 - 움직임은 윤곽 모드 고정) ──────────────
+let outlineParticles = [];
+let burstParticles   = [];
+let bubbles          = [];
+let shockwaves       = [];
+let lastBubbleSpawn  = 0;
+
 const themes = [
   { name: '🔥 불꽃', colors: ['#ff4500','#ff6b35','#ffd700','#ff8c00'] },
   { name: '💎 다이아', colors: ['#00d2d3','#54a0ff','#a29bfe','#fd79a8'] },
@@ -123,140 +92,308 @@ const themes = [
   { name: '🌸 벚꽃', colors: ['#ffb3c6','#ff8fa3','#ffccd5','#ff4d6d'] },
 ];
 let themeIdx = 0;
+function themeColors() { return themes[themeIdx].colors; }
+function randColor() { const c = themeColors(); return c[Math.floor(Math.random() * c.length)]; }
 
-// ── 파티클 (윤곽 전용 - 퍼짐 최소) ────────────────────────
-class Particle {
+// ── 윤곽 파티클 ───────────────────────────────────────────
+class OutlineParticle {
   constructor(x, y) {
-    const colors = themes[themeIdx].colors;
-    this.x = x;
-    this.y = y;
+    this.x = x; this.y = y;
     this.vx = (Math.random() - 0.5) * 1.8;
     this.vy = (Math.random() - 0.5) * 1.8;
     this.life = 0.85 + Math.random() * 0.15;
     this.decay = 0.014 + Math.random() * 0.014;
     this.r = 1.5 + Math.random() * 2.5;
-    this.color = colors[Math.floor(Math.random() * colors.length)];
+    this.color = randColor();
   }
-
   update() {
-    this.x += this.vx;
-    this.y += this.vy;
-    this.vx *= 0.90;
-    this.vy *= 0.90;
+    this.x += this.vx; this.y += this.vy;
+    this.vx *= 0.90; this.vy *= 0.90;
     this.life -= this.decay;
   }
-
   draw() {
     ctx.save();
     ctx.globalAlpha = Math.max(0, this.life);
-    ctx.shadowColor = this.color;
-    ctx.shadowBlur = this.r * 3;
+    ctx.shadowColor = this.color; ctx.shadowBlur = this.r * 3;
     ctx.fillStyle = this.color;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.fill();
     ctx.restore();
   }
 }
 
-// ── Sobel 엣지 감지 ────────────────────────────────────────
+// ── 방울 터질 때 파티클 ───────────────────────────────────
+class BurstParticle {
+  constructor(x, y, color, radius) {
+    this.x = x; this.y = y;
+    const angle = Math.random() * Math.PI * 2;
+    const spd   = 3 + Math.random() * radius * 0.25;
+    this.vx = Math.cos(angle) * spd;
+    this.vy = Math.sin(angle) * spd - 2;
+    this.life = 1; this.decay = 0.018 + Math.random() * 0.025;
+    this.r = 2 + Math.random() * 5;
+    this.color = color;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    this.vx *= 0.94; this.vy += 0.18;
+    this.life -= this.decay;
+  }
+  draw() {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, this.life);
+    ctx.shadowColor = this.color; ctx.shadowBlur = this.r * 3;
+    ctx.fillStyle = this.color;
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.r * this.life, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ── 충격파 링 ─────────────────────────────────────────────
+class Shockwave {
+  constructor(x, y, color) {
+    this.x = x; this.y = y;
+    this.r = 10; this.maxR = 120 + Math.random() * 60;
+    this.life = 1; this.color = color;
+  }
+  update() {
+    this.r  += (this.maxR - this.r) * 0.18;
+    this.life -= 0.045;
+  }
+  draw() {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, this.life * 0.7);
+    ctx.strokeStyle = this.color;
+    ctx.shadowColor = this.color; ctx.shadowBlur = 20;
+    ctx.lineWidth = 3 * this.life;
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// ── 방울 ─────────────────────────────────────────────────
+class Bubble {
+  constructor() {
+    const W = canvas.width, H = canvas.height;
+    this.x = 80 + Math.random() * (W - 160);
+    this.y = 80 + Math.random() * (H - 160);
+    this.r = 28 + Math.random() * 38;
+    this.vx = (Math.random() - 0.5) * 1.4;
+    this.vy = (Math.random() - 0.5) * 1.4 - 0.2;
+    this.color = randColor();
+    this.wobble = Math.random() * Math.PI * 2;
+    this.wobbleSpd = 0.025 + Math.random() * 0.02;
+    this.pulse = 0;
+    this.pulseSpd = 0.04 + Math.random() * 0.02;
+    this.alive = true;
+    this.nearOutline = false;
+  }
+
+  update() {
+    this.wobble += this.wobbleSpd;
+    this.pulse  += this.pulseSpd;
+    this.x += this.vx; this.y += this.vy;
+    this.vx += (Math.random() - 0.5) * 0.12;
+    this.vy += (Math.random() - 0.5) * 0.12;
+    // 속도 제한
+    const spd = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+    if (spd > 2.2) { this.vx = this.vx/spd*2.2; this.vy = this.vy/spd*2.2; }
+    // 벽 반사
+    const W = canvas.width, H = canvas.height;
+    if (this.x - this.r < 0)  { this.x = this.r;   this.vx =  Math.abs(this.vx); }
+    if (this.x + this.r > W)  { this.x = W - this.r; this.vx = -Math.abs(this.vx); }
+    if (this.y - this.r < 0)  { this.y = this.r;   this.vy =  Math.abs(this.vy); }
+    if (this.y + this.r > H)  { this.y = H - this.r; this.vy = -Math.abs(this.vy); }
+  }
+
+  draw() {
+    const wX = 1 + (this.nearOutline ? 0.15 : 0.06) * Math.sin(this.wobble);
+    const wY = 1 + (this.nearOutline ? 0.15 : 0.06) * Math.cos(this.wobble);
+    const pulse = 1 + 0.04 * Math.sin(this.pulse);
+    const r = this.r * pulse;
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.scale(wX, wY);
+
+    // 외부 글로우
+    const glow = ctx.createRadialGradient(0, 0, r * 0.1, 0, 0, r * 1.4);
+    glow.addColorStop(0, this.color + '00');
+    glow.addColorStop(0.6, this.color + '00');
+    glow.addColorStop(1, this.color + (this.nearOutline ? '66' : '33'));
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.4, 0, Math.PI*2);
+    ctx.fillStyle = glow; ctx.fill();
+
+    // 몸체
+    const body = ctx.createRadialGradient(-r*0.25, -r*0.25, r*0.05, 0, 0, r);
+    body.addColorStop(0, this.color + '55');
+    body.addColorStop(0.5, this.color + '22');
+    body.addColorStop(1, this.color + 'aa');
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2);
+    ctx.fillStyle = body; ctx.fill();
+
+    // 테두리
+    ctx.strokeStyle = this.color + 'cc';
+    ctx.lineWidth = this.nearOutline ? 3 : 1.5;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = this.nearOutline ? 20 : 8;
+    ctx.stroke();
+
+    // 하이라이트
+    ctx.beginPath(); ctx.arc(-r*0.3, -r*0.3, r*0.22, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(-r*0.18, -r*0.18, r*0.07, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fill();
+
+    ctx.restore();
+  }
+
+  pop() {
+    if (!this.alive) return;
+    this.alive = false;
+    score++;
+    scoreEl.textContent = '💥 ' + score;
+
+    const count = 18 + Math.floor(this.r * 0.7);
+    for (let i = 0; i < count; i++) burstParticles.push(new BurstParticle(this.x, this.y, this.color, this.r));
+    shockwaves.push(new Shockwave(this.x, this.y, this.color));
+    shockwaves.push(new Shockwave(this.x, this.y, '#ffffff'));
+  }
+}
+
+// ── Sobel 엣지 ───────────────────────────────────────────
 function sobelEdge(data) {
   const edge = new Float32Array(PW * PH);
-  for (let y = 1; y < PH - 1; y++) {
-    for (let x = 1; x < PW - 1; x++) {
+  for (let y = 1; y < PH-1; y++) {
+    for (let x = 1; x < PW-1; x++) {
       const luma = (dx, dy) => {
-        const i = ((y + dy) * PW + (x + dx)) * 4;
-        return data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
+        const i = ((y+dy)*PW + (x+dx))*4;
+        return data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114;
       };
-      const gx = -luma(-1,-1) - 2*luma(-1,0) - luma(-1,1)
-                + luma( 1,-1) + 2*luma( 1,0) + luma( 1,1);
-      const gy = -luma(-1,-1) - 2*luma(0,-1) - luma(1,-1)
-                + luma(-1, 1) + 2*luma(0, 1) + luma(1, 1);
-      edge[y * PW + x] = Math.sqrt(gx*gx + gy*gy) / 255;
+      const gx = -luma(-1,-1)-2*luma(-1,0)-luma(-1,1)+luma(1,-1)+2*luma(1,0)+luma(1,1);
+      const gy = -luma(-1,-1)-2*luma(0,-1)-luma(1,-1)+luma(-1,1)+2*luma(0,1)+luma(1,1);
+      edge[y*PW+x] = Math.sqrt(gx*gx+gy*gy)/255;
     }
   }
   return edge;
 }
 
-// ── 모션 감지 + 윤곽 추출 ──────────────────────────────────
+// ── 윤곽 감지 ────────────────────────────────────────────
 function detectContour() {
   if (video.readyState < 2) return [];
-
   pctx.drawImage(video, 0, 0, PW, PH);
   const { data } = pctx.getImageData(0, 0, PW, PH);
   const thresh = parseInt(threshSlider.value);
 
-  // 1. 모션 마스크
   const motion = new Uint8Array(PW * PH);
   if (prevData) {
-    for (let i = 0; i < PW * PH; i++) {
-      const b = i * 4;
-      const diff = (Math.abs(data[b]   - prevData[b])
-                  + Math.abs(data[b+1] - prevData[b+1])
-                  + Math.abs(data[b+2] - prevData[b+2])) / 3;
-      if (diff > thresh) motion[i] = 1;
+    for (let i = 0; i < PW*PH; i++) {
+      const b = i*4;
+      const d = (Math.abs(data[b]-prevData[b]) + Math.abs(data[b+1]-prevData[b+1]) + Math.abs(data[b+2]-prevData[b+2]))/3;
+      if (d > thresh) motion[i] = 1;
     }
   }
   prevData = new Uint8ClampedArray(data);
 
-  // 2. 모션 마스크 팽창 (radius=4 → 엣지가 경계 근처에 있어도 잡힘)
   const dilated = new Uint8Array(PW * PH);
   const R = 4;
-  for (let y = 0; y < PH; y++) {
-    for (let x = 0; x < PW; x++) {
-      loop:
-      for (let dy = -R; dy <= R; dy++) {
-        for (let dx = -R; dx <= R; dx++) {
-          const ny = y + dy, nx = x + dx;
-          if (ny >= 0 && ny < PH && nx >= 0 && nx < PW && motion[ny*PW+nx]) {
-            dilated[y*PW+x] = 1;
-            break loop;
-          }
-        }
-      }
+  for (let y = 0; y < PH; y++) for (let x = 0; x < PW; x++) {
+    outer: for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+      const ny=y+dy, nx=x+dx;
+      if (ny>=0&&ny<PH&&nx>=0&&nx<PW&&motion[ny*PW+nx]) { dilated[y*PW+x]=1; break outer; }
     }
   }
 
-  // 3. Sobel 엣지 + 팽창 영역 교집합
   const edge = sobelEdge(data);
-  const EDGE_THRESH = 0.22;
-  const points = [];
+  lastEdge    = edge;
+  lastDilated = dilated;
 
-  for (let i = 0; i < PW * PH; i++) {
-    if (!dilated[i] || edge[i] < EDGE_THRESH) continue;
+  const EDGE_T = 0.22;
+  const points = [];
+  for (let i = 0; i < PW*PH; i++) {
+    if (!dilated[i] || edge[i] < EDGE_T) continue;
     const rawX = (i % PW) / PW;
     const py   = Math.floor(i / PW) / PH;
     const px   = (facing === 'user') ? (1 - rawX) : rawX;
     points.push({ px, py });
   }
-
   return points;
 }
 
-// ── 메인 루프 ──────────────────────────────────────────────
-function loop() {
-  requestAnimationFrame(loop);
-
+// ── 방울-윤곽 충돌 ───────────────────────────────────────
+function checkBubbleCollisions() {
+  if (!lastEdge || !lastDilated) return;
   const W = canvas.width, H = canvas.height;
 
-  // 잔상 (느리게 지워서 윤곽이 빛나 보임)
+  for (const b of bubbles) {
+    if (!b.alive) continue;
+
+    // 방울 중심을 proc 좌표로
+    const rawX = (facing === 'user') ? (1 - b.x/W) : (b.x/W);
+    const bpx = rawX * PW;
+    const bpy = (b.y / H) * PH;
+    const br  = (b.r / W) * PW;
+
+    let hitCount = 0;
+    const SAMPLES = 16;
+    for (let s = 0; s < SAMPLES; s++) {
+      const angle = (s / SAMPLES) * Math.PI * 2;
+      const cx = Math.round(bpx + Math.cos(angle) * br);
+      const cy = Math.round(bpy + Math.sin(angle) * br);
+      if (cx < 0 || cx >= PW || cy < 0 || cy >= PH) continue;
+      const idx = cy * PW + cx;
+      if (lastEdge[idx] > 0.22 && lastDilated[idx]) hitCount++;
+    }
+
+    b.nearOutline = hitCount >= 2;
+    if (hitCount >= 4) b.pop();
+  }
+}
+
+// ── 방울 생성 ────────────────────────────────────────────
+function spawnBubbleIfNeeded() {
+  const now = Date.now();
+  const interval = 1800 + Math.random() * 1200;
+  if (bubbles.length < 10 && now - lastBubbleSpawn > interval) {
+    bubbles.push(new Bubble());
+    lastBubbleSpawn = now;
+  }
+}
+
+// ── 메인 루프 ────────────────────────────────────────────
+function loop() {
+  requestAnimationFrame(loop);
+  const W = canvas.width, H = canvas.height;
+
   ctx.fillStyle = 'rgba(0,0,0,0.16)';
   ctx.fillRect(0, 0, W, H);
 
-  // 윤곽 → 파티클 생성
-  const points = detectContour();
-  for (const { px, py } of points) {
+  // 윤곽 파티클
+  const pts = detectContour();
+  for (const { px, py } of pts) {
     if (Math.random() > 0.35) continue;
-    particles.push(new Particle(px * W, py * H));
+    outlineParticles.push(new OutlineParticle(px*W, py*H));
   }
+  if (outlineParticles.length > 1800) outlineParticles = outlineParticles.slice(-1400);
+  outlineParticles = outlineParticles.filter(p => p.life > 0);
+  for (const p of outlineParticles) { p.update(); p.draw(); }
 
-  if (particles.length > 1800) particles = particles.slice(-1400);
+  // 방울
+  spawnBubbleIfNeeded();
+  checkBubbleCollisions();
+  bubbles = bubbles.filter(b => b.alive);
+  for (const b of bubbles) { b.update(); b.draw(); }
 
-  particles = particles.filter(p => p.life > 0);
-  for (const p of particles) { p.update(); p.draw(); }
+  // 충격파
+  shockwaves = shockwaves.filter(s => s.life > 0);
+  for (const s of shockwaves) { s.update(); s.draw(); }
+
+  // 터진 파티클
+  if (burstParticles.length > 800) burstParticles = burstParticles.slice(-600);
+  burstParticles = burstParticles.filter(p => p.life > 0);
+  for (const p of burstParticles) { p.update(); p.draw(); }
 }
 
-// ── 카메라 시작 ────────────────────────────────────────────
+// ── 카메라 ───────────────────────────────────────────────
 async function startCamera() {
   try {
     if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
@@ -272,11 +409,13 @@ async function startCamera() {
   }
 }
 
-// ── UI ─────────────────────────────────────────────────────
+// ── UI ───────────────────────────────────────────────────
 document.getElementById('themeBtn').addEventListener('click', () => {
   themeIdx = (themeIdx + 1) % themes.length;
   document.getElementById('themeBtn').textContent = themes[themeIdx].name;
-  particles = [];
+  outlineParticles = [];
+  burstParticles = [];
+  bubbles.forEach(b => b.color = randColor());
 });
 
 document.getElementById('camBtn').addEventListener('click', () => {
