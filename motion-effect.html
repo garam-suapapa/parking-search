@@ -3,435 +3,517 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>모션 이펙트</title>
+  <title>버블 팡팡 🫧</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; overflow: hidden; touch-action: none; }
-    #video {
-      position: fixed; width: 100%; height: 100%;
-      object-fit: cover; transform: scaleX(-1);
-    }
-    #fx { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-    #ui {
-      position: fixed; bottom: 30px; left: 50%;
-      transform: translateX(-50%); display: flex; gap: 12px; z-index: 10;
-    }
-    button {
-      padding: 12px 22px; border: 2px solid rgba(255,255,255,0.3);
-      border-radius: 30px; background: rgba(0,0,0,0.4); color: #fff;
-      font-size: 15px; font-weight: bold; backdrop-filter: blur(8px);
-      cursor: pointer; transition: background 0.2s;
-    }
-    button:active { background: rgba(255,255,255,0.2); }
-    #msg {
-      position: fixed; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      color: rgba(255,255,255,0.7); font-size: 18px;
-      text-align: center; font-family: sans-serif;
-      pointer-events: none; z-index: 10;
-    }
-    #score {
-      position: fixed; top: 20px; left: 20px;
-      color: #fff; font-size: 22px; font-family: sans-serif;
-      font-weight: bold; z-index: 10;
-      text-shadow: 0 0 10px rgba(255,200,0,0.8);
-    }
-    #sensitivity {
-      position: fixed; top: 20px; right: 20px;
-      display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 10;
-    }
-    #sensitivity label { color: rgba(255,255,255,0.7); font-size: 12px; font-family: sans-serif; }
-    input[type=range] { width: 100px; accent-color: #ff6b6b; }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:#000;overflow:hidden;touch-action:none;font-family:sans-serif;}
+    #video{position:fixed;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
+    #fx{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;}
+
+    /* HUD top */
+    #hud{position:fixed;top:0;left:0;right:0;padding:10px 14px;z-index:10;pointer-events:none;}
+    #progressBar{height:7px;background:rgba(255,255,255,0.15);border-radius:4px;overflow:hidden;margin-bottom:5px;}
+    #progressFill{height:100%;background:linear-gradient(90deg,#54a0ff,#a29bfe);border-radius:4px;transition:width .4s;}
+    #hudRow{display:flex;justify-content:space-between;align-items:center;}
+    #missionTxt{color:#fff;font-size:13px;font-weight:bold;text-shadow:0 1px 4px rgba(0,0,0,.9);}
+    #levelTxt{color:rgba(255,255,255,.65);font-size:12px;}
+
+    /* Combo */
+    #comboWrap{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;z-index:10;opacity:0;transition:opacity .25s;}
+    #comboNum{font-size:72px;font-weight:900;color:#ffd700;text-shadow:0 0 20px #ff8c00,0 2px 8px rgba(0,0,0,.8);line-height:1;}
+    #comboLbl{font-size:16px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.8);}
+    #comboBarWrap{width:110px;height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin:5px auto 0;overflow:hidden;}
+    #comboBarFill{height:100%;background:#ffd700;border-radius:2px;}
+
+    /* Score + level badge */
+    #scoreTxt{position:fixed;bottom:88px;right:16px;color:#ffd700;font-size:26px;font-weight:900;text-shadow:0 0 10px rgba(255,200,0,.6);z-index:10;pointer-events:none;text-align:right;}
+    #scoreLabel{font-size:11px;color:rgba(255,255,255,.5);display:block;}
+    #lvBadge{position:fixed;bottom:88px;left:16px;z-index:10;pointer-events:none;}
+    #lvTxt{color:#fff;font-size:13px;font-weight:bold;text-shadow:0 1px 4px rgba(0,0,0,.8);}
+    #expBarWrap{width:72px;height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin:3px 0;overflow:hidden;}
+    #expBarFill{height:100%;background:#a29bfe;border-radius:2px;transition:width .3s;}
+    #badgeRow{font-size:17px;display:flex;gap:2px;flex-wrap:wrap;max-width:76px;}
+
+    /* Fever */
+    #feverWrap{position:fixed;top:42%;left:0;right:0;text-align:center;pointer-events:none;z-index:9;opacity:0;transition:opacity .3s;}
+    #feverWrap.on{opacity:1;animation:fpulse .5s infinite alternate;}
+    @keyframes fpulse{from{text-shadow:0 0 30px #ff4500,0 0 60px #ffd700;}to{text-shadow:0 0 60px #ff4500,0 0 120px #ffd700;}}
+    #feverTxt{font-size:52px;font-weight:900;background:linear-gradient(45deg,#ff4500,#ffd700,#ff4500);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+
+    /* Controls */
+    #msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,.7);font-size:18px;text-align:center;z-index:30;}
+    #ui{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:10;}
+    .btn{padding:11px 18px;border:2px solid rgba(255,255,255,.3);border-radius:28px;background:rgba(0,0,0,.45);color:#fff;font-size:13px;font-weight:bold;backdrop-filter:blur(8px);cursor:pointer;}
+    .btn:active{background:rgba(255,255,255,.2);}
+    #sensWrap{position:fixed;top:56px;right:14px;display:flex;flex-direction:column;align-items:flex-end;gap:3px;z-index:10;}
+    #sensWrap label{color:rgba(255,255,255,.55);font-size:11px;}
+    input[type=range]{width:88px;accent-color:#54a0ff;}
   </style>
 </head>
 <body>
-
 <video id="video" autoplay playsinline muted></video>
 <canvas id="fx"></canvas>
 <div id="msg">카메라 권한을 허용해주세요 📷</div>
-<div id="score">💥 0</div>
-<div id="sensitivity">
+
+<div id="hud">
+  <div id="progressBar"><div id="progressFill" style="width:0%"></div></div>
+  <div id="hudRow">
+    <div id="missionTxt">준비 중...</div>
+    <div id="levelTxt">Lv.1</div>
+  </div>
+</div>
+
+<div id="comboWrap">
+  <div id="comboNum">0</div>
+  <div id="comboLbl">COMBO</div>
+  <div id="comboBarWrap"><div id="comboBarFill" style="width:100%"></div></div>
+</div>
+
+<div id="scoreTxt"><span id="scoreLabel">점수</span><span id="scoreNum">0</span></div>
+<div id="lvBadge">
+  <div id="lvTxt">Lv.1</div>
+  <div id="expBarWrap"><div id="expBarFill" style="width:0%"></div></div>
+  <div id="badgeRow"></div>
+</div>
+
+<div id="feverWrap"><div id="feverTxt">🔥 FEVER! 🔥</div></div>
+
+<div id="sensWrap">
   <label>감도</label>
   <input type="range" id="thresh" min="5" max="80" value="20">
 </div>
 <div id="ui">
-  <button id="themeBtn">🔥 불꽃</button>
-  <button id="camBtn">🔄 전환</button>
+  <button class="btn" id="themeBtn">🔥 불꽃</button>
+  <button class="btn" id="muteBtn">🔊</button>
+  <button class="btn" id="camBtn">🔄</button>
 </div>
 
 <script>
-const video   = document.getElementById('video');
-const canvas  = document.getElementById('fx');
-const ctx     = canvas.getContext('2d');
-const msg     = document.getElementById('msg');
-const scoreEl = document.getElementById('score');
-const threshSlider = document.getElementById('thresh');
+// ── setup ──────────────────────────────────────────────
+const video  = document.getElementById('video');
+const canvas = document.getElementById('fx');
+const ctx    = canvas.getContext('2d');
+const thresh = document.getElementById('thresh');
 
 const proc = document.createElement('canvas');
-const pctx = proc.getContext('2d', { willReadFrequently: true });
-const PW = 120, PH = 90;
-proc.width = PW; proc.height = PH;
+const pctx = proc.getContext('2d',{willReadFrequently:true});
+const PW=120,PH=90; proc.width=PW; proc.height=PH;
 
-let prevData   = null;
-let facing     = 'user';
-let score      = 0;
-let lastEdge   = null;
-let lastDilated = null;
+let prevData=null, lastEdge=null, lastDilated=null, facing='user';
+let outlinePts=[], burstPts=[], starPts=[], popups=[], shocks=[], bubbles=[];
+let lastSpawn=0, score=0, shakeAmt=0, flashAlpha=0;
 
-let outlineParticles = [];
-let burstParticles   = [];
-let bubbles          = [];
-let shockwaves       = [];
-let lastBubbleSpawn  = 0;
+// ── audio ──────────────────────────────────────────────
+let AC=null, muted=false;
+function ac(){
+  if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)();
+  if(AC.state==='suspended') AC.resume();
+  return AC;
+}
+function tone(freq,type,dur,vol,slide){
+  if(muted) return;
+  try{
+    const a=ac(), o=a.createOscillator(), g=a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.type=type; o.frequency.setValueAtTime(freq,a.currentTime);
+    if(slide) o.frequency.exponentialRampToValueAtTime(slide,a.currentTime+dur);
+    g.gain.setValueAtTime(vol,a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+dur);
+    o.start(); o.stop(a.currentTime+dur+0.01);
+  }catch(e){}
+}
+const PENTA=[523,587,659,784,880,1047,1175];
+function snd(t,p){
+  if(t==='pop_normal') tone(400,'sine',.12,.28,200);
+  else if(t==='pop_small') tone(700,'sine',.09,.24,350);
+  else if(t==='pop_boss'){ tone(160,'sawtooth',.25,.4,80); tone(200,'square',.1,.2); }
+  else if(t==='pop_star'){ [800,1000,1200,1600].forEach((f,i)=>setTimeout(()=>tone(f,'triangle',.15,.3),i*55)); }
+  else if(t==='combo'){ tone(PENTA[Math.min((p||1)-1,6)],'triangle',.2,.3); }
+  else if(t==='levelup'){ [523,659,784].forEach((f,i)=>setTimeout(()=>tone(f,'triangle',.3,.35),i*110)); }
+  else if(t==='fever'){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,'sawtooth',.15,.25),i*75)); }
+  else if(t==='boss_hit'){ tone(200,'sawtooth',.1,.3,120); }
+}
 
-const themes = [
-  { name: '🔥 불꽃', colors: ['#ff4500','#ff6b35','#ffd700','#ff8c00'] },
-  { name: '💎 다이아', colors: ['#00d2d3','#54a0ff','#a29bfe','#fd79a8'] },
-  { name: '🌿 자연', colors: ['#00b894','#55efc4','#fdcb6e','#6c5ce7'] },
-  { name: '⚡ 번개', colors: ['#ffffff','#e0f0ff','#c9e8ff','#ffeb3b'] },
-  { name: '🌸 벚꽃', colors: ['#ffb3c6','#ff8fa3','#ffccd5','#ff4d6d'] },
+// ── themes ──────────────────────────────────────────────
+const THEMES=[
+  {name:'🔥 불꽃', c:['#ff4500','#ff6b35','#ffd700','#ff8c00']},
+  {name:'💎 다이아',c:['#00d2d3','#54a0ff','#a29bfe','#fd79a8']},
+  {name:'🌿 자연', c:['#00b894','#55efc4','#fdcb6e','#6c5ce7']},
+  {name:'⚡ 번개', c:['#ffffff','#e0f0ff','#c9e8ff','#ffeb3b']},
+  {name:'🌸 벚꽃', c:['#ffb3c6','#ff8fa3','#ffccd5','#ff4d6d']},
+  {name:'🦄 유니콘',c:['#ff9ff3','#ffeaa7','#a29bfe','#74b9ff']},
+  {name:'🍭 캔디', c:['#fd79a8','#fdcb6e','#55efc4','#74b9ff']},
 ];
-let themeIdx = 0;
-function themeColors() { return themes[themeIdx].colors; }
-function randColor() { const c = themeColors(); return c[Math.floor(Math.random() * c.length)]; }
+let TI=0;
+function rc(){ const c=THEMES[TI].c; return c[c.length*Math.random()|0]; }
 
-// ── 윤곽 파티클 ───────────────────────────────────────────
-class OutlineParticle {
-  constructor(x, y) {
-    this.x = x; this.y = y;
-    this.vx = (Math.random() - 0.5) * 1.8;
-    this.vy = (Math.random() - 0.5) * 1.8;
-    this.life = 0.85 + Math.random() * 0.15;
-    this.decay = 0.014 + Math.random() * 0.014;
-    this.r = 1.5 + Math.random() * 2.5;
-    this.color = randColor();
-  }
-  update() {
-    this.x += this.vx; this.y += this.vy;
-    this.vx *= 0.90; this.vy *= 0.90;
-    this.life -= this.decay;
-  }
-  draw() {
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, this.life);
-    ctx.shadowColor = this.color; ctx.shadowBlur = this.r * 3;
-    ctx.fillStyle = this.color;
-    ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.fill();
-    ctx.restore();
-  }
+// ── game state ──────────────────────────────────────────
+const gs={
+  score:0, level:1, exp:0, expNeeded:10,
+  combo:0, comboTO:null, maxCombo:0,
+  fever:false, feverTO:null,
+  totalPops:0,
+  multiplier:1,
+};
+let badges=[];
+function lvGoal(){ return Math.floor(10*Math.pow(1.35,gs.level-1)); }
+function lvSettings(){
+  const l=gs.level;
+  return{
+    maxBubbles: Math.min(3+Math.floor(l/2),10),
+    spawnMs:    Math.max(900,2200-l*140),
+    smallChance:Math.min(0.04+l*0.04,0.38),
+    bossChance: Math.min(0.01+l*0.015,0.09),
+    starChance: 0.06,
+    hitThreshN: Math.min(3+Math.floor(l/4),6),
+  };
 }
 
-// ── 방울 터질 때 파티클 ───────────────────────────────────
-class BurstParticle {
-  constructor(x, y, color, radius) {
-    this.x = x; this.y = y;
-    const angle = Math.random() * Math.PI * 2;
-    const spd   = 3 + Math.random() * radius * 0.25;
-    this.vx = Math.cos(angle) * spd;
-    this.vy = Math.sin(angle) * spd - 2;
-    this.life = 1; this.decay = 0.018 + Math.random() * 0.025;
-    this.r = 2 + Math.random() * 5;
-    this.color = color;
-  }
-  update() {
-    this.x += this.vx; this.y += this.vy;
-    this.vx *= 0.94; this.vy += 0.18;
-    this.life -= this.decay;
-  }
-  draw() {
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, this.life);
-    ctx.shadowColor = this.color; ctx.shadowBlur = this.r * 3;
-    ctx.fillStyle = this.color;
-    ctx.beginPath(); ctx.arc(this.x, this.y, this.r * this.life, 0, Math.PI*2); ctx.fill();
-    ctx.restore();
-  }
+// ── localStorage ────────────────────────────────────────
+const SAVE_KEY='bubblePang3';
+function loadSave(){
+  try{
+    const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}');
+    gs.level=d.level||1; gs.exp=d.exp||0;
+    gs.expNeeded=d.expNeeded||10;
+    gs.maxCombo=d.maxCombo||0; gs.totalPops=d.totalPops||0;
+    badges=d.badges||[];
+  }catch(e){}
+}
+function doSave(){
+  try{ localStorage.setItem(SAVE_KEY,JSON.stringify({level:gs.level,exp:gs.exp,expNeeded:gs.expNeeded,maxCombo:gs.maxCombo,totalPops:gs.totalPops,badges})); }catch(e){}
 }
 
-// ── 충격파 링 ─────────────────────────────────────────────
-class Shockwave {
-  constructor(x, y, color) {
-    this.x = x; this.y = y;
-    this.r = 10; this.maxR = 120 + Math.random() * 60;
-    this.life = 1; this.color = color;
-  }
-  update() {
-    this.r  += (this.maxR - this.r) * 0.18;
-    this.life -= 0.045;
-  }
-  draw() {
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, this.life * 0.7);
-    ctx.strokeStyle = this.color;
-    ctx.shadowColor = this.color; ctx.shadowBlur = 20;
-    ctx.lineWidth = 3 * this.life;
-    ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.stroke();
-    ctx.restore();
-  }
-}
-
-// ── 방울 ─────────────────────────────────────────────────
-class Bubble {
-  constructor() {
-    const W = canvas.width, H = canvas.height;
-    this.x = 80 + Math.random() * (W - 160);
-    this.y = 80 + Math.random() * (H - 160);
-    this.r = 28 + Math.random() * 38;
-    this.vx = (Math.random() - 0.5) * 1.4;
-    this.vy = (Math.random() - 0.5) * 1.4 - 0.2;
-    this.color = randColor();
-    this.wobble = Math.random() * Math.PI * 2;
-    this.wobbleSpd = 0.025 + Math.random() * 0.02;
-    this.pulse = 0;
-    this.pulseSpd = 0.04 + Math.random() * 0.02;
-    this.alive = true;
-    this.nearOutline = false;
-  }
-
-  update() {
-    this.wobble += this.wobbleSpd;
-    this.pulse  += this.pulseSpd;
-    this.x += this.vx; this.y += this.vy;
-    this.vx += (Math.random() - 0.5) * 0.12;
-    this.vy += (Math.random() - 0.5) * 0.12;
-    // 속도 제한
-    const spd = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
-    if (spd > 2.2) { this.vx = this.vx/spd*2.2; this.vy = this.vy/spd*2.2; }
-    // 벽 반사
-    const W = canvas.width, H = canvas.height;
-    if (this.x - this.r < 0)  { this.x = this.r;   this.vx =  Math.abs(this.vx); }
-    if (this.x + this.r > W)  { this.x = W - this.r; this.vx = -Math.abs(this.vx); }
-    if (this.y - this.r < 0)  { this.y = this.r;   this.vy =  Math.abs(this.vy); }
-    if (this.y + this.r > H)  { this.y = H - this.r; this.vy = -Math.abs(this.vy); }
-  }
-
-  draw() {
-    const wX = 1 + (this.nearOutline ? 0.15 : 0.06) * Math.sin(this.wobble);
-    const wY = 1 + (this.nearOutline ? 0.15 : 0.06) * Math.cos(this.wobble);
-    const pulse = 1 + 0.04 * Math.sin(this.pulse);
-    const r = this.r * pulse;
-
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.scale(wX, wY);
-
-    // 외부 글로우
-    const glow = ctx.createRadialGradient(0, 0, r * 0.1, 0, 0, r * 1.4);
-    glow.addColorStop(0, this.color + '00');
-    glow.addColorStop(0.6, this.color + '00');
-    glow.addColorStop(1, this.color + (this.nearOutline ? '66' : '33'));
-    ctx.beginPath(); ctx.arc(0, 0, r * 1.4, 0, Math.PI*2);
-    ctx.fillStyle = glow; ctx.fill();
-
-    // 몸체
-    const body = ctx.createRadialGradient(-r*0.25, -r*0.25, r*0.05, 0, 0, r);
-    body.addColorStop(0, this.color + '55');
-    body.addColorStop(0.5, this.color + '22');
-    body.addColorStop(1, this.color + 'aa');
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2);
-    ctx.fillStyle = body; ctx.fill();
-
-    // 테두리
-    ctx.strokeStyle = this.color + 'cc';
-    ctx.lineWidth = this.nearOutline ? 3 : 1.5;
-    ctx.shadowColor = this.color;
-    ctx.shadowBlur = this.nearOutline ? 20 : 8;
-    ctx.stroke();
-
-    // 하이라이트
-    ctx.beginPath(); ctx.arc(-r*0.3, -r*0.3, r*0.22, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(-r*0.18, -r*0.18, r*0.07, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fill();
-
-    ctx.restore();
-  }
-
-  pop() {
-    if (!this.alive) return;
-    this.alive = false;
-    score++;
-    scoreEl.textContent = '💥 ' + score;
-
-    const count = 18 + Math.floor(this.r * 0.7);
-    for (let i = 0; i < count; i++) burstParticles.push(new BurstParticle(this.x, this.y, this.color, this.r));
-    shockwaves.push(new Shockwave(this.x, this.y, this.color));
-    shockwaves.push(new Shockwave(this.x, this.y, '#ffffff'));
-  }
-}
-
-// ── Sobel 엣지 ───────────────────────────────────────────
-function sobelEdge(data) {
-  const edge = new Float32Array(PW * PH);
-  for (let y = 1; y < PH-1; y++) {
-    for (let x = 1; x < PW-1; x++) {
-      const luma = (dx, dy) => {
-        const i = ((y+dy)*PW + (x+dx))*4;
-        return data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114;
-      };
-      const gx = -luma(-1,-1)-2*luma(-1,0)-luma(-1,1)+luma(1,-1)+2*luma(1,0)+luma(1,1);
-      const gy = -luma(-1,-1)-2*luma(0,-1)-luma(1,-1)+luma(-1,1)+2*luma(0,1)+luma(1,1);
-      edge[y*PW+x] = Math.sqrt(gx*gx+gy*gy)/255;
+// ── badges ──────────────────────────────────────────────
+const BDEFS=[
+  {id:'p10', icon:'🎯',cond:()=>gs.totalPops>=10},
+  {id:'p50', icon:'🌟',cond:()=>gs.totalPops>=50},
+  {id:'p100',icon:'💯',cond:()=>gs.totalPops>=100},
+  {id:'c5',  icon:'⚡',cond:()=>gs.maxCombo>=5},
+  {id:'c10', icon:'🔥',cond:()=>gs.maxCombo>=10},
+  {id:'fv',  icon:'🌈',cond:()=>gs.fever},
+  {id:'lv5', icon:'🏆',cond:()=>gs.level>=5},
+  {id:'lv10',icon:'👑',cond:()=>gs.level>=10},
+];
+function checkBadges(){
+  for(const b of BDEFS){
+    if(!badges.includes(b.id)&&b.cond()){
+      badges.push(b.id); doSave(); updateBadgeUI(); toast(b.icon+' 뱃지 획득!');
     }
   }
-  return edge;
+}
+function updateBadgeUI(){
+  document.getElementById('badgeRow').textContent=badges.map(id=>BDEFS.find(b=>b.id===id)?.icon||'').join('');
 }
 
-// ── 윤곽 감지 ────────────────────────────────────────────
-function detectContour() {
-  if (video.readyState < 2) return [];
-  pctx.drawImage(video, 0, 0, PW, PH);
-  const { data } = pctx.getImageData(0, 0, PW, PH);
-  const thresh = parseInt(threshSlider.value);
+// ── toast ────────────────────────────────────────────────
+let toastTO2=null;
+function toast(txt){
+  let el=document.getElementById('_toast');
+  if(!el){el=document.createElement('div');el.id='_toast';el.style.cssText='position:fixed;top:110px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#fff;padding:9px 18px;border-radius:20px;font-size:15px;font-weight:bold;z-index:30;pointer-events:none;transition:opacity .3s';document.body.appendChild(el);}
+  el.textContent=txt; el.style.opacity='1';
+  clearTimeout(toastTO2); toastTO2=setTimeout(()=>el.style.opacity='0',2200);
+}
 
-  const motion = new Uint8Array(PW * PH);
-  if (prevData) {
-    for (let i = 0; i < PW*PH; i++) {
-      const b = i*4;
-      const d = (Math.abs(data[b]-prevData[b]) + Math.abs(data[b+1]-prevData[b+1]) + Math.abs(data[b+2]-prevData[b+2]))/3;
-      if (d > thresh) motion[i] = 1;
+// ── HUD update ───────────────────────────────────────────
+function updateHUD(){
+  const goal=lvGoal();
+  const pct=Math.min(gs.exp/goal*100,100);
+  document.getElementById('progressFill').style.width=pct+'%';
+  document.getElementById('missionTxt').textContent=`Lv.${gs.level} — ${gs.exp}/${goal}개 터뜨리기!`;
+  document.getElementById('levelTxt').textContent=`Lv.${gs.level}`;
+  document.getElementById('lvTxt').textContent=`Lv.${gs.level}`;
+  document.getElementById('expBarFill').style.width=pct+'%';
+  document.getElementById('scoreNum').textContent=score;
+}
+
+// ── particles ────────────────────────────────────────────
+class OPart{
+  constructor(x,y){this.x=x;this.y=y;this.vx=(Math.random()-.5)*1.8;this.vy=(Math.random()-.5)*1.8;this.life=.85+Math.random()*.15;this.decay=.014+Math.random()*.014;this.r=1.5+Math.random()*2.5;this.color=rc();}
+  update(){this.x+=this.vx;this.y+=this.vy;this.vx*=.9;this.vy*=.9;this.life-=this.decay;}
+  draw(){ctx.save();ctx.globalAlpha=Math.max(0,this.life);ctx.shadowColor=this.color;ctx.shadowBlur=this.r*3;ctx.fillStyle=this.color;ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fill();ctx.restore();}
+}
+class BPart{
+  constructor(x,y,col,R){this.x=x;this.y=y;const a=Math.random()*Math.PI*2,s=3+Math.random()*R*.25;this.vx=Math.cos(a)*s;this.vy=Math.sin(a)*s-2;this.life=1;this.decay=.018+Math.random()*.025;this.r=2+Math.random()*5;this.color=col;}
+  update(){this.x+=this.vx;this.y+=this.vy;this.vx*=.94;this.vy+=.18;this.life-=this.decay;}
+  draw(){ctx.save();ctx.globalAlpha=Math.max(0,this.life);ctx.shadowColor=this.color;ctx.shadowBlur=this.r*3;ctx.fillStyle=this.color;ctx.beginPath();ctx.arc(this.x,this.y,this.r*this.life,0,Math.PI*2);ctx.fill();ctx.restore();}
+}
+function drawStar5(cx,cy,or,ir){
+  ctx.beginPath();
+  for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,r=i%2?ir:or;i?ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a)):ctx.moveTo(cx+r*Math.cos(a),cy+r*Math.sin(a));}
+  ctx.closePath();ctx.fill();
+}
+class SPart{
+  constructor(x,y,col,R){this.x=x;this.y=y;const a=Math.random()*Math.PI*2,s=4+Math.random()*R*.3;this.vx=Math.cos(a)*s;this.vy=Math.sin(a)*s-3;this.life=1;this.decay=.015+Math.random()*.02;this.r=3+Math.random()*6;this.color=col;this.rot=Math.random()*Math.PI*2;this.rotS=(Math.random()-.5)*.2;}
+  update(){this.x+=this.vx;this.y+=this.vy;this.vx*=.94;this.vy+=.1;this.rot+=this.rotS;this.life-=this.decay;}
+  draw(){ctx.save();ctx.globalAlpha=Math.max(0,this.life);ctx.translate(this.x,this.y);ctx.rotate(this.rot);ctx.shadowColor=this.color;ctx.shadowBlur=this.r*4;ctx.fillStyle=this.color;drawStar5(0,0,this.r*this.life,this.r*.42*this.life);ctx.restore();}
+}
+class Popup{
+  constructor(x,y,txt,col){this.x=x;this.y=y;this.vy=-2.5;this.txt=txt;this.color=col;this.life=1;this.decay=.022;}
+  update(){this.y+=this.vy;this.vy*=.95;this.life-=this.decay;}
+  draw(){ctx.save();ctx.globalAlpha=Math.max(0,this.life);ctx.font=`bold ${30+(1-this.life)*8}px sans-serif`;ctx.fillStyle=this.color;ctx.shadowColor=this.color;ctx.shadowBlur=8;ctx.textAlign='center';ctx.fillText(this.txt,this.x,this.y);ctx.restore();}
+}
+class Shock{
+  constructor(x,y,col){this.x=x;this.y=y;this.r=10;this.maxR=110+Math.random()*60;this.life=1;this.color=col;}
+  update(){this.r+=(this.maxR-this.r)*.18;this.life-=.045;}
+  draw(){ctx.save();ctx.globalAlpha=Math.max(0,this.life*.7);ctx.strokeStyle=this.color;ctx.shadowColor=this.color;ctx.shadowBlur=18;ctx.lineWidth=3*this.life;ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.stroke();ctx.restore();}
+}
+
+// ── bubble ────────────────────────────────────────────────
+class Bubble{
+  constructor(type){
+    const W=canvas.width,H=canvas.height;
+    this.type=type||'normal'; this.alive=true;
+    this.wobble=Math.random()*Math.PI*2; this.wobbleSpd=.025+Math.random()*.02;
+    this.pulse=Math.random()*Math.PI*2; this.pulseSpd=.04+Math.random()*.02;
+    this.nearOutline=false; this.rot=0; this.lastHit=0;
+    const s=lvSettings();
+    switch(this.type){
+      case 'small': this.r=16+Math.random()*14; this.color='#f9ca24'; this.maxSpd=3.2; this.hp=1; this.pts=3; this.hitT=2; break;
+      case 'boss':  this.r=68+Math.random()*28; this.color='#e17055'; this.maxSpd=.9;  this.hp=3; this.pts=10; this.hitT=4; this.cracks=0; break;
+      case 'star':  this.r=32+Math.random()*18; this.color='#ffd700'; this.maxSpd=1.6; this.hp=1; this.pts=5;  this.hitT=3; break;
+      default:      this.r=30+Math.random()*26; this.color=rc();       this.maxSpd=1.8; this.hp=1; this.pts=1;  this.hitT=s.hitThreshN;
     }
+    this.x=this.r+Math.random()*(W-this.r*2);
+    this.y=this.r+Math.random()*(H-this.r*2);
+    this.vx=(Math.random()-.5)*this.maxSpd;
+    this.vy=(Math.random()-.5)*this.maxSpd;
   }
-  prevData = new Uint8ClampedArray(data);
-
-  const dilated = new Uint8Array(PW * PH);
-  const R = 4;
-  for (let y = 0; y < PH; y++) for (let x = 0; x < PW; x++) {
-    outer: for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
-      const ny=y+dy, nx=x+dx;
-      if (ny>=0&&ny<PH&&nx>=0&&nx<PW&&motion[ny*PW+nx]) { dilated[y*PW+x]=1; break outer; }
+  update(){
+    this.wobble+=this.wobbleSpd*(this.nearOutline?2.5:1);
+    this.pulse+=this.pulseSpd;
+    if(this.type==='star') this.rot+=.022;
+    this.x+=this.vx; this.y+=this.vy;
+    this.vx+=(Math.random()-.5)*.12; this.vy+=(Math.random()-.5)*.12;
+    const sp=Math.hypot(this.vx,this.vy);
+    if(sp>this.maxSpd){this.vx=this.vx/sp*this.maxSpd;this.vy=this.vy/sp*this.maxSpd;}
+    const W=canvas.width,H=canvas.height;
+    if(this.x-this.r<0){this.x=this.r;this.vx=Math.abs(this.vx);}
+    if(this.x+this.r>W){this.x=W-this.r;this.vx=-Math.abs(this.vx);}
+    if(this.y-this.r<0){this.y=this.r;this.vy=Math.abs(this.vy);}
+    if(this.y+this.r>H){this.y=H-this.r;this.vy=-Math.abs(this.vy);}
+  }
+  draw(){
+    const wX=1+(this.nearOutline?.13:.06)*Math.sin(this.wobble);
+    const wY=1+(this.nearOutline?.13:.06)*Math.cos(this.wobble);
+    const r=this.r*(1+.04*Math.sin(this.pulse));
+    ctx.save(); ctx.translate(this.x,this.y); ctx.scale(wX,wY);
+    if(this.type==='star'){
+      ctx.rotate(this.rot);
+      ctx.shadowColor='#ffd700'; ctx.shadowBlur=gs.fever?40:22;
+      ctx.fillStyle=gs.fever?'#fff':'#ffd700';
+      drawStar5(0,0,r,r*.42);
+      ctx.fillStyle='rgba(255,255,255,.55)'; drawStar5(0,0,r*.28,r*.1);
+    } else {
+      // glow
+      const gl=ctx.createRadialGradient(0,0,r*.1,0,0,r*1.35);
+      gl.addColorStop(0,this.color+'00'); gl.addColorStop(.65,this.color+'00'); gl.addColorStop(1,this.color+(this.nearOutline?'66':'33'));
+      ctx.beginPath(); ctx.arc(0,0,r*1.35,0,Math.PI*2); ctx.fillStyle=gl; ctx.fill();
+      // body
+      const bd=ctx.createRadialGradient(-r*.25,-r*.25,r*.05,0,0,r);
+      bd.addColorStop(0,this.color+'55'); bd.addColorStop(.5,this.color+'22'); bd.addColorStop(1,this.color+'aa');
+      ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fillStyle=bd; ctx.fill();
+      // boss cracks + hp
+      if(this.type==='boss'&&this.cracks>0){
+        ctx.save(); ctx.strokeStyle='rgba(255,80,30,.7)'; ctx.lineWidth=2;
+        for(let c=0;c<this.cracks;c++){
+          const a=c*(Math.PI*2/3)+.3; ctx.beginPath(); ctx.moveTo(0,0);
+          for(let s=0;s<4;s++){const ra=a+(Math.random()-.5)*.5,rl=(.25+s*.2)*r;ctx.lineTo(Math.cos(ra)*rl,Math.sin(ra)*rl);}
+          ctx.stroke();
+        }
+        ctx.restore();
+        ctx.fillStyle='rgba(255,200,100,.9)'; ctx.font=`bold ${r*.38}px sans-serif`;
+        ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('×'+this.hp,0,0);
+      }
+      // rim
+      ctx.strokeStyle=this.color+'cc'; ctx.lineWidth=this.nearOutline?3:1.5;
+      ctx.shadowColor=this.color; ctx.shadowBlur=this.nearOutline?22:8;
+      ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke();
+      // highlight
+      ctx.beginPath(); ctx.arc(-r*.3,-r*.3,r*.22,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,.44)'; ctx.fill();
     }
+    ctx.restore();
   }
-
-  const edge = sobelEdge(data);
-  lastEdge    = edge;
-  lastDilated = dilated;
-
-  const EDGE_T = 0.22;
-  const points = [];
-  for (let i = 0; i < PW*PH; i++) {
-    if (!dilated[i] || edge[i] < EDGE_T) continue;
-    const rawX = (i % PW) / PW;
-    const py   = Math.floor(i / PW) / PH;
-    const px   = (facing === 'user') ? (1 - rawX) : rawX;
-    points.push({ px, py });
-  }
-  return points;
-}
-
-// ── 방울-윤곽 충돌 ───────────────────────────────────────
-function checkBubbleCollisions() {
-  if (!lastEdge || !lastDilated) return;
-  const W = canvas.width, H = canvas.height;
-
-  for (const b of bubbles) {
-    if (!b.alive) continue;
-
-    // 방울 중심을 proc 좌표로
-    const rawX = (facing === 'user') ? (1 - b.x/W) : (b.x/W);
-    const bpx = rawX * PW;
-    const bpy = (b.y / H) * PH;
-    const br  = (b.r / W) * PW;
-
-    let hitCount = 0;
-    const SAMPLES = 16;
-    for (let s = 0; s < SAMPLES; s++) {
-      const angle = (s / SAMPLES) * Math.PI * 2;
-      const cx = Math.round(bpx + Math.cos(angle) * br);
-      const cy = Math.round(bpy + Math.sin(angle) * br);
-      if (cx < 0 || cx >= PW || cy < 0 || cy >= PH) continue;
-      const idx = cy * PW + cx;
-      if (lastEdge[idx] > 0.22 && lastDilated[idx]) hitCount++;
+  hit(){
+    if(!this.alive) return;
+    if(this.type==='boss'){
+      this.hp--; this.cracks++;
+      shakeAmt=5; flashAlpha=.07;
+      snd('boss_hit');
+      if(this.hp>0) return;
     }
-
-    b.nearOutline = hitCount >= 2;
-    if (hitCount >= 4) b.pop();
+    this.pop();
+  }
+  pop(){
+    if(!this.alive) return;
+    this.alive=false;
+    const mul=gs.fever?5:gs.multiplier;
+    const pts=this.pts*mul;
+    score+=pts; gs.exp+=this.pts; gs.totalPops++;
+    updateHUD();
+    const col=this.type==='star'?'#ffd700':this.color;
+    popups.push(new Popup(this.x,this.y-this.r-8,'+'+pts,col));
+    const n=16+Math.floor(this.r*.6);
+    for(let i=0;i<n;i++){
+      Math.random()<.4?starPts.push(new SPart(this.x,this.y,col,this.r)):burstPts.push(new BPart(this.x,this.y,col,this.r));
+    }
+    shocks.push(new Shock(this.x,this.y,col)); shocks.push(new Shock(this.x,this.y,'#fff'));
+    shakeAmt=this.type==='boss'?11:4; flashAlpha=this.type==='boss'?.18:.07;
+    snd('pop_'+this.type);
+    if(this.type==='star') setTimeout(()=>{ bubbles.filter(b=>b.alive&&b!==this).forEach(b=>b.pop()); },80);
+    if(this.type==='boss'){ for(let i=0;i<3;i++){ const s=new Bubble('small'); s.x=this.x+(Math.random()-.5)*this.r; s.y=this.y+(Math.random()-.5)*this.r; bubbles.push(s); } }
+    onPop();
   }
 }
 
-// ── 방울 생성 ────────────────────────────────────────────
-function spawnBubbleIfNeeded() {
-  const now = Date.now();
-  const interval = 1800 + Math.random() * 1200;
-  if (bubbles.length < 10 && now - lastBubbleSpawn > interval) {
-    bubbles.push(new Bubble());
-    lastBubbleSpawn = now;
+// ── combo + fever ─────────────────────────────────────────
+function onPop(){
+  clearTimeout(gs.comboTO);
+  gs.combo++;
+  if(gs.combo>gs.maxCombo){ gs.maxCombo=gs.combo; doSave(); }
+  gs.multiplier=gs.combo>=10?3:gs.combo>=5?2:gs.combo>=3?1.5:1;
+  snd('combo',gs.combo);
+  if(gs.combo>=10&&!gs.fever) startFever();
+  const cw=document.getElementById('comboWrap');
+  const cn=document.getElementById('comboNum');
+  cw.style.opacity='1';
+  cn.textContent=gs.combo+'x';
+  cn.style.fontSize=Math.min(72+gs.combo*3,118)+'px';
+  startComboBar();
+  gs.comboTO=setTimeout(()=>{ gs.combo=0; gs.multiplier=1; cw.style.opacity='0'; if(!gs.fever) stopFever(); },1500);
+  checkLevelUp(); checkBadges();
+}
+
+let cbInt=null,cbStart=0;
+function startComboBar(){
+  clearInterval(cbInt); cbStart=Date.now();
+  cbInt=setInterval(()=>{ const p=Math.max(0,1-(Date.now()-cbStart)/1500); document.getElementById('comboBarFill').style.width=(p*100)+'%'; if(p===0)clearInterval(cbInt); },30);
+}
+function startFever(){
+  gs.fever=true; clearTimeout(gs.feverTO);
+  document.getElementById('feverWrap').classList.add('on');
+  snd('fever'); shakeAmt=9; flashAlpha=.28;
+  gs.feverTO=setTimeout(stopFever,5000);
+  checkBadges();
+}
+function stopFever(){ gs.fever=false; document.getElementById('feverWrap').classList.remove('on'); }
+
+// ── level up ──────────────────────────────────────────────
+function checkLevelUp(){
+  const goal=lvGoal();
+  if(gs.exp>=goal){
+    gs.exp-=goal; gs.level++;
+    gs.expNeeded=Math.floor(gs.expNeeded*1.35);
+    doSave(); updateHUD();
+    snd('levelup'); shakeAmt=9; flashAlpha=.25;
+    toast('🌟 레벨 UP!  Lv.'+gs.level);
+    checkBadges();
+  }
+  updateHUD();
+}
+
+// ── sobel + contour ───────────────────────────────────────
+function sobel(data){
+  const e=new Float32Array(PW*PH);
+  for(let y=1;y<PH-1;y++) for(let x=1;x<PW-1;x++){
+    const l=(dx,dy)=>{const i=((y+dy)*PW+(x+dx))*4;return data[i]*.299+data[i+1]*.587+data[i+2]*.114;};
+    const gx=-l(-1,-1)-2*l(-1,0)-l(-1,1)+l(1,-1)+2*l(1,0)+l(1,1);
+    const gy=-l(-1,-1)-2*l(0,-1)-l(1,-1)+l(-1,1)+2*l(0,1)+l(1,1);
+    e[y*PW+x]=Math.sqrt(gx*gx+gy*gy)/255;
+  }
+  return e;
+}
+function detectContour(){
+  if(video.readyState<2) return [];
+  pctx.drawImage(video,0,0,PW,PH);
+  const{data}=pctx.getImageData(0,0,PW,PH);
+  const thr=parseInt(thresh.value);
+  const mot=new Uint8Array(PW*PH);
+  if(prevData) for(let i=0;i<PW*PH;i++){ const b=i*4; if((Math.abs(data[b]-prevData[b])+Math.abs(data[b+1]-prevData[b+1])+Math.abs(data[b+2]-prevData[b+2]))/3>thr) mot[i]=1; }
+  prevData=new Uint8ClampedArray(data);
+  const dil=new Uint8Array(PW*PH);
+  const R=4;
+  for(let y=0;y<PH;y++) for(let x=0;x<PW;x++){ outer:for(let dy=-R;dy<=R;dy++) for(let dx=-R;dx<=R;dx++){ const ny=y+dy,nx=x+dx; if(ny>=0&&ny<PH&&nx>=0&&nx<PW&&mot[ny*PW+nx]){dil[y*PW+x]=1;break outer;} } }
+  const edge=sobel(data); lastEdge=edge; lastDilated=dil;
+  const pts=[];
+  for(let i=0;i<PW*PH;i++){ if(!dil[i]||edge[i]<.22) continue; const rx=(i%PW)/PW,py=Math.floor(i/PW)/PH; pts.push({px:(facing==='user')?(1-rx):rx,py}); }
+  return pts;
+}
+
+// ── collision ─────────────────────────────────────────────
+function checkCollisions(){
+  if(!lastEdge||!lastDilated) return;
+  const W=canvas.width,H=canvas.height;
+  for(const b of bubbles){
+    if(!b.alive) continue;
+    const rx=(facing==='user')?(1-b.x/W):(b.x/W);
+    const bpx=rx*PW, bpy=(b.y/H)*PH, br=(b.r/W)*PW;
+    let hits=0;
+    for(let s=0;s<16;s++){ const a=(s/16)*Math.PI*2,cx=Math.round(bpx+Math.cos(a)*br),cy=Math.round(bpy+Math.sin(a)*br); if(cx<0||cx>=PW||cy<0||cy>=PH) continue; const idx=cy*PW+cx; if(lastEdge[idx]>.22&&lastDilated[idx]) hits++; }
+    b.nearOutline=(hits>=2);
+    if(hits>=b.hitT && Date.now()-b.lastHit>500){ b.lastHit=Date.now(); b.hit(); }
   }
 }
 
-// ── 메인 루프 ────────────────────────────────────────────
-function loop() {
+// ── spawn ─────────────────────────────────────────────────
+function spawnBubble(){
+  const now=Date.now(), s=lvSettings();
+  if(bubbles.length>=s.maxBubbles||now-lastSpawn<s.spawnMs) return;
+  lastSpawn=now;
+  const r=Math.random();
+  let type;
+  if(r<s.bossChance)                       type='boss';
+  else if(r<s.bossChance+s.starChance)     type='star';
+  else if(r<s.bossChance+s.starChance+s.smallChance) type='small';
+  else                                     type='normal';
+  bubbles.push(new Bubble(type));
+}
+
+// ── main loop ─────────────────────────────────────────────
+function loop(){
   requestAnimationFrame(loop);
-  const W = canvas.width, H = canvas.height;
+  const W=canvas.width,H=canvas.height;
+  if(shakeAmt>.4){ const sx=(Math.random()-.5)*shakeAmt,sy=(Math.random()-.5)*shakeAmt; canvas.style.transform=`translate(${sx}px,${sy}px)`; shakeAmt*=.72; } else { shakeAmt=0; canvas.style.transform=''; }
+  ctx.fillStyle='rgba(0,0,0,.16)'; ctx.fillRect(0,0,W,H);
+  if(flashAlpha>.01){ ctx.fillStyle=`rgba(255,255,255,${flashAlpha})`; ctx.fillRect(0,0,W,H); flashAlpha*=.75; }
 
-  ctx.fillStyle = 'rgba(0,0,0,0.16)';
-  ctx.fillRect(0, 0, W, H);
+  const pts=detectContour();
+  for(const{px,py}of pts){ if(Math.random()>.35) continue; outlinePts.push(new OPart(px*W,py*H)); }
+  if(outlinePts.length>1800) outlinePts=outlinePts.slice(-1400);
+  outlinePts=outlinePts.filter(p=>p.life>0); for(const p of outlinePts){p.update();p.draw();}
 
-  // 윤곽 파티클
-  const pts = detectContour();
-  for (const { px, py } of pts) {
-    if (Math.random() > 0.35) continue;
-    outlineParticles.push(new OutlineParticle(px*W, py*H));
-  }
-  if (outlineParticles.length > 1800) outlineParticles = outlineParticles.slice(-1400);
-  outlineParticles = outlineParticles.filter(p => p.life > 0);
-  for (const p of outlineParticles) { p.update(); p.draw(); }
+  spawnBubble(); checkCollisions();
+  bubbles=bubbles.filter(b=>b.alive); for(const b of bubbles){b.update();b.draw();}
 
-  // 방울
-  spawnBubbleIfNeeded();
-  checkBubbleCollisions();
-  bubbles = bubbles.filter(b => b.alive);
-  for (const b of bubbles) { b.update(); b.draw(); }
-
-  // 충격파
-  shockwaves = shockwaves.filter(s => s.life > 0);
-  for (const s of shockwaves) { s.update(); s.draw(); }
-
-  // 터진 파티클
-  if (burstParticles.length > 800) burstParticles = burstParticles.slice(-600);
-  burstParticles = burstParticles.filter(p => p.life > 0);
-  for (const p of burstParticles) { p.update(); p.draw(); }
+  shocks=shocks.filter(s=>s.life>0); for(const s of shocks){s.update();s.draw();}
+  if(burstPts.length>800) burstPts=burstPts.slice(-600);
+  burstPts=burstPts.filter(p=>p.life>0); for(const p of burstPts){p.update();p.draw();}
+  if(starPts.length>400) starPts=starPts.slice(-300);
+  starPts=starPts.filter(p=>p.life>0); for(const p of starPts){p.update();p.draw();}
+  popups=popups.filter(p=>p.life>0); for(const p of popups){p.update();p.draw();}
 }
 
-// ── 카메라 ───────────────────────────────────────────────
-async function startCamera() {
-  try {
-    if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } },
-      audio: false,
-    });
-    video.srcObject = stream;
-    msg.style.display = 'none';
-    prevData = null;
-  } catch (e) {
-    msg.textContent = '카메라를 사용할 수 없어요 😢\n' + e.message;
-  }
+// ── camera ────────────────────────────────────────────────
+async function startCamera(){
+  try{
+    if(video.srcObject) video.srcObject.getTracks().forEach(t=>t.stop());
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:640},height:{ideal:480}},audio:false});
+    video.srcObject=s; document.getElementById('msg').style.display='none'; prevData=null;
+  }catch(e){ document.getElementById('msg').textContent='카메라를 사용할 수 없어요 😢\n'+e.message; }
 }
 
-// ── UI ───────────────────────────────────────────────────
-document.getElementById('themeBtn').addEventListener('click', () => {
-  themeIdx = (themeIdx + 1) % themes.length;
-  document.getElementById('themeBtn').textContent = themes[themeIdx].name;
-  outlineParticles = [];
-  burstParticles = [];
-  bubbles.forEach(b => b.color = randColor());
-});
+// ── UI ────────────────────────────────────────────────────
+document.getElementById('themeBtn').addEventListener('click',()=>{ TI=(TI+1)%THEMES.length; document.getElementById('themeBtn').textContent=THEMES[TI].name; outlinePts=[]; });
+document.getElementById('muteBtn').addEventListener('click',()=>{ muted=!muted; document.getElementById('muteBtn').textContent=muted?'🔇':'🔊'; });
+document.getElementById('camBtn').addEventListener('click',()=>{ facing=(facing==='user')?'environment':'user'; startCamera(); });
+canvas.addEventListener('touchstart',()=>ac(),{once:true,passive:true});
+canvas.addEventListener('click',()=>ac(),{once:true});
 
-document.getElementById('camBtn').addEventListener('click', () => {
-  facing = (facing === 'user') ? 'environment' : 'user';
-  startCamera();
-});
+function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
+window.addEventListener('resize',resize); resize();
 
-function resize() {
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
-
-startCamera();
-loop();
+loadSave(); updateBadgeUI(); updateHUD();
+startCamera(); loop();
 </script>
 </body>
 </html>
