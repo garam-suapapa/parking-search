@@ -403,6 +403,7 @@ function getAudio() {
 }
 
 function playFreq(freq, durationSec, startTime = 0) {
+  if (!freq) return; // REST인 경우 (쉼표) 소리 발생 구조를 만들지 않고 스킵
   const ac = getAudio();
   const t  = startTime || ac.currentTime;
   const osc = ac.createOscillator();
@@ -845,25 +846,24 @@ const SAMPLES = {
     {name:'D5',duration:.5}
   ],
   sample2: [
-    // 진짜 악보에 적힌 정확한 멜로디 (PDF 1~6마디 기반)
-    // ── 반짝반짝 빛이나 ──
-    {name:'F4',duration:.125},{name:'F4',duration:.125},{name:'G4',duration:.125},{name:'A4',duration:.125},
-    {name:'Bb4',duration:.25}, {name:'A4',duration:.125},{name:'G4',duration:.125},
-    // ── 는 별처럼 ──
-    {name:'A4',duration:.125},{name:'A4',duration:.125},{name:'G4',duration:.25},{name:'F4',duration:.25},
+    // ── 반짝반짝 빛이나 ── (A4 A4 Bb4 C5 | D5 C5 Bb4)
+    {name:'A4',duration:.125},{name:'A4',duration:.125},{name:'Bb4',duration:.125},{name:'C5',duration:.125},
+    {name:'D5',duration:.25}, {name:'C5',duration:.125},{name:'Bb4',duration:.125},
+    // ── 는 별처럼 ── (C5 C5 Bb4 A4)
+    {name:'C5',duration:.125},{name:'C5',duration:.125},{name:'Bb4',duration:.25},{name:'A4',duration:.25},
     {name:'REST',duration:.25},
-    // ── 내가너의 ──
-    {name:'F4',duration:.125},{name:'F4',duration:.125},{name:'F4',duration:.125},{name:'F4',duration:.125},
-    // ── 별이되어 ──
-    {name:'G4',duration:.25},{name:'A4',duration:.125},{name:'Bb4',duration:.125},
-    // ── 줄게 ──
-    {name:'A4',duration:.125},{name:'G4',duration:.125},{name:'F4',duration:.5},
+    // ── 내가너의 ── (A4 A4 A4 A4)
+    {name:'A4',duration:.125},{name:'A4',duration:.125},{name:'A4',duration:.125},{name:'A4',duration:.125},
+    // ── 별이되어 ── (Bb4 C5 D5)
+    {name:'Bb4',duration:.25},{name:'C5',duration:.125},{name:'D5',duration:.125},
+    // ── 줄게 ── (C5 Bb4 A4)
+    {name:'C5',duration:.125},{name:'Bb4',duration:.125},{name:'A4',duration:.5},
     {name:'REST',duration:.125},
-    // ── 캐치캐치 슈팅스타 ──
-    {name:'D5',duration:.125},{name:'D5',duration:.125},{name:'C5',duration:.125},{name:'C5',duration:.125},
-    {name:'Bb4',duration:.125},{name:'A4',duration:.125},{name:'G4',duration:.125},{name:'F4',duration:.125},
-    // ── 티니핑 ──
-    {name:'E4',duration:.125},{name:'F4',duration:.25},{name:'G4',duration:.5}
+    // ── 캐치캐치 슈팅스타 ── (F5 F5 E5 E5 D5 C5 Bb4 A4)
+    {name:'F5',duration:.125},{name:'F5',duration:.125},{name:'E5',duration:.125},{name:'E5',duration:.125},
+    {name:'D5',duration:.125},{name:'C5',duration:.125},{name:'Bb4',duration:.125},{name:'A4',duration:.125},
+    // ── 티니핑 ── (G4 A4 Bb4)
+    {name:'G4',duration:.125},{name:'A4',duration:.25},{name:'Bb4',duration:.5}
   ]
 };
 

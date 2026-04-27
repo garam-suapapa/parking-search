@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>모션 이펙트</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; touch-action: none; }
+
+    #video {
+      position: fixed;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    #fx {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
+
+    #ui {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      z-index: 10;
+    }
+
+    button {
+      padding: 12px 22px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 30px;
+      background: rgba(0,0,0,0.4);
+      color: #fff;
+      font-size: 15px;
+      font-weight: bold;
+      backdrop-filter: blur(8px);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:active { background: rgba(255,255,255,0.2); }
+
+    #msg {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: rgba(255,255,255,0.7);
+      font-size: 18px;
+      text-align: center;
+      font-family: sans-serif;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    #sensitivity {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      z-index: 10;
+    }
+    #sensitivity label {
+      color: rgba(255,255,255,0.7);
+      font-size: 12px;
+      font-family: sans-serif;
+    }
+    input[type=range] {
+      width: 100px;
+      accent-color: #ff6b6b;
+    }
+  </style>
+</head>
+<body>
+
+<video id="video" autoplay playsinline muted></video>
+<canvas id="fx"></canvas>
+
+<div id="msg">카메라 권한을 허용해주세요 📷</div>
+
+<div id="sensitivity">
+  <label>감도</label>
+  <input type="range" id="thresh" min="5" max="80" value="25">
+</div>
+
+<div id="ui">
+  <button id="themeBtn">🔥 불꽃</button>
+  <button id="camBtn">🔄 전환</button>
+</div>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('fx');
+const ctx = canvas.getContext('2d');
+const msg = document.getElementById('msg');
+const threshSlider = document.getElementById('thresh');
+
+// 소형 처리용 캔버스 (성능용)
+const proc = document.createElement('canvas');
+const pctx = proc.getContext('2d', { willReadFrequently: true });
+const PW = 80, PH = 60;
+proc.width = PW; proc.height = PH;
+
+let prevData = null;
+let particles = [];
+let facing = 'user';
+
+// ── 테마 정의 ──────────────────────────────────────────
+const themes = [
+  { name: '🔥 불꽃', colors: ['#ff4500','#ff6b35','#ffd700','#ff8c00'], gravity: 0.15, spread: 9, size: [3,8], trail: 0.18 },
+  { name: '💎 다이아', colors: ['#00d2d3','#54a0ff','#a29bfe','#fd79a8'], gravity: -0.05, spread: 7, size: [2,6], trail: 0.12 },
+  { name: '🌿 자연', colors: ['#00b894','#55efc4','#fdcb6e','#6c5ce7'], gravity: 0.08, spread: 8, size: [3,7], trail: 0.15 },
+  { name: '⚡ 번개', colors: ['#fdfd96','#fffde7','#fff9c4','#ffeb3b'], gravity: 0.0, spread: 12, size: [1,4], trail: 0.25 },
+  { name: '🌸 벚꽃', colors: ['#ffb3c6','#ff8fa3','#ffccd5','#ff4d6d'], gravity: 0.04, spread: 6, size: [4,10], trail: 0.10 },
+];
+let themeIdx = 0;
+
+// ── 파티클 ──────────────────────────────────────────────
+class Particle {
+  constructor(x, y) {
+    const t = themes[themeIdx];
+    this.x = x;
+    this.y = y;
+    this.vx = (Math.random() - 0.5) * t.spread;
+    this.vy = (Math.random() - 0.5) * t.spread - t.spread * 0.3;
+    this.life = 1;
+    this.decay = 0.018 + Math.random() * 0.025;
+    this.r = t.size[0] + Math.random() * (t.size[1] - t.size[0]);
+    this.color = t.colors[Math.floor(Math.random() * t.colors.length)];
+    this.gravity = t.gravity;
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += this.gravity;
+    this.vx *= 0.97;
+    this.life -= this.decay;
+  }
+
+  draw() {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, this.life);
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = this.r * 2;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r * this.life, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ── 모션 감지 ──────────────────────────────────────────
+function detectMotion() {
+  if (video.readyState < 2) return [];
+
+  pctx.drawImage(video, 0, 0, PW, PH);
+  const { data } = pctx.getImageData(0, 0, PW, PH);
+  const thresh = parseInt(threshSlider.value);
+  const points = [];
+
+  if (prevData) {
+    for (let i = 0; i < PW * PH; i++) {
+      const b = i * 4;
+      const diff = (Math.abs(data[b]   - prevData[b])
+                  + Math.abs(data[b+1] - prevData[b+1])
+                  + Math.abs(data[b+2] - prevData[b+2])) / 3;
+
+      if (diff > thresh) {
+        const rawX = (i % PW) / PW;
+        const py    = Math.floor(i / PW) / PH;
+        // 전면 카메라는 거울 반전
+        const px = (facing === 'user') ? (1 - rawX) : rawX;
+        points.push({ px, py, intensity: Math.min(diff / 120, 1) });
+      }
+    }
+  }
+
+  prevData = new Uint8ClampedArray(data);
+  return points;
+}
+
+// ── 메인 루프 ──────────────────────────────────────────
+function loop() {
+  requestAnimationFrame(loop);
+
+  const W = canvas.width, H = canvas.height;
+  const t = themes[themeIdx];
+
+  // 잔상 효과
+  ctx.fillStyle = `rgba(0,0,0,${t.trail})`;
+  ctx.fillRect(0, 0, W, H);
+
+  // 모션 → 파티클 생성
+  const points = detectMotion();
+  for (const { px, py, intensity } of points) {
+    if (Math.random() > 0.12) continue; // 샘플링 (성능)
+    const count = Math.ceil(intensity * 4);
+    for (let i = 0; i < count; i++) {
+      particles.push(new Particle(px * W, py * H));
+    }
+  }
+
+  // 파티클 한계
+  if (particles.length > 1200) particles = particles.slice(-900);
+
+  // 업데이트 & 렌더
+  particles = particles.filter(p => p.life > 0);
+  for (const p of particles) { p.update(); p.draw(); }
+}
+
+// ── 카메라 시작 ──────────────────────────────────────────
+async function startCamera() {
+  try {
+    if (video.srcObject) {
+      video.srcObject.getTracks().forEach(t => t.stop());
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false,
+    });
+    video.srcObject = stream;
+    msg.style.display = 'none';
+    prevData = null;
+  } catch (e) {
+    msg.textContent = '카메라를 사용할 수 없어요 😢\n' + e.message;
+  }
+}
+
+// ── UI 이벤트 ──────────────────────────────────────────
+document.getElementById('themeBtn').addEventListener('click', () => {
+  themeIdx = (themeIdx + 1) % themes.length;
+  document.getElementById('themeBtn').textContent = themes[themeIdx].name;
+  particles = [];
+});
+
+document.getElementById('camBtn').addEventListener('click', () => {
+  facing = (facing === 'user') ? 'environment' : 'user';
+  startCamera();
+});
+
+// ── 리사이즈 ──────────────────────────────────────────
+function resize() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── 시작 ──────────────────────────────────────────────
+startCamera();
+loop();
+</script>
+</body>
+</html>
