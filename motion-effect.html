@@ -519,8 +519,8 @@ bgm.volume=0.4;
 function startBGM(){ bgm.play().catch(()=>{}); }
 document.getElementById('muteBtn').addEventListener('click',()=>{ muted=!muted; bgm.muted=muted; document.getElementById('muteBtn').textContent=muted?'🔇':'🔊'; });
 document.getElementById('camBtn').addEventListener('click',()=>{ facing=(facing==='user')?'environment':'user'; startCamera(); });
-canvas.addEventListener('touchstart',()=>{ ac(); startBGM(); },{once:true,passive:true});
-canvas.addEventListener('click',()=>{ ac(); startBGM(); },{once:true});
+document.addEventListener('touchstart',()=>{ ac(); startBGM(); },{once:true,passive:true});
+document.addEventListener('click',()=>{ ac(); startBGM(); },{once:true});
 
 function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
 window.addEventListener('resize',resize); resize();
