@@ -50,6 +50,22 @@
     #sharkBorder.on{display:block;animation:sbpulse .35s infinite alternate;}
     @keyframes sbpulse{from{opacity:.35;}to{opacity:.9;}}
 
+    /* Game over screen */
+    #gameOverScreen{position:fixed;top:0;left:0;right:0;bottom:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;opacity:0;}
+    #gameOverScreen.on{pointer-events:auto;}
+    #gameOverBg{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);}
+    #gameOverContent{position:relative;text-align:center;}
+    #gameOverShark{font-size:96px;line-height:1;animation:goShark 0.6s ease-out;}
+    @keyframes goShark{from{transform:scale(3) rotate(-20deg);opacity:0;}to{transform:scale(1) rotate(0deg);opacity:1;}}
+    #gameOverTitle{font-size:58px;font-weight:900;color:#ff2020;text-shadow:0 0 30px #ff0000,0 0 60px #ff4444;margin:12px 0 6px;animation:goTitle .4s .3s both ease-out;}
+    @keyframes goTitle{from{transform:translateY(-30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+    #gameOverSub{font-size:16px;color:rgba(255,255,255,.7);margin-bottom:10px;animation:goTitle .4s .5s both ease-out;}
+    #gameOverScore{font-size:42px;font-weight:900;color:#ffd700;text-shadow:0 0 20px #ff8c00;margin-bottom:32px;animation:goTitle .4s .6s both ease-out;}
+    #gameOverBtn{padding:16px 48px;font-size:18px;font-weight:900;border:none;border-radius:40px;background:linear-gradient(135deg,#ff4444,#ff8c00);color:#fff;cursor:pointer;box-shadow:0 0 30px rgba(255,80,0,.6);animation:goTitle .4s .8s both ease-out;transition:transform .15s,box-shadow .15s;}
+    #gameOverBtn:active{transform:scale(.95);box-shadow:0 0 10px rgba(255,80,0,.4);}
+    #gameOverScreen.fadeout{animation:goFade .6s forwards ease-in;}
+    @keyframes goFade{to{opacity:0;}}
+
     /* Controls */
     #msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,.7);font-size:18px;text-align:center;z-index:30;}
     #ui{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:10;}
@@ -91,6 +107,17 @@
 
 <div id="sharkWarning"><div id="sharkWarnTxt">⚠️ 상어 출현!</div><div id="sharkCountNum">3</div></div>
 <div id="sharkBorder"></div>
+
+<div id="gameOverScreen">
+  <div id="gameOverBg"></div>
+  <div id="gameOverContent">
+    <div id="gameOverShark">🦈</div>
+    <div id="gameOverTitle">GAME OVER</div>
+    <div id="gameOverSub">상어에게 잡아먹혔습니다!</div>
+    <div id="gameOverScore"></div>
+    <button id="gameOverBtn">🔄 다시 시작</button>
+  </div>
+</div>
 
 <div id="sensWrap">
   <label>감도</label>
@@ -497,14 +524,30 @@ function triggerSharkWarning(){
 function gameOver(){
   snd('boss_hit');
   shakeAmt=25; flashAlpha=.9;
-  toast('💀 상어에게 당했습니다! 처음부터 다시 시작합니다.');
-  score=0; gs.exp=0; gs.level=1; gs.expNeeded=10; gs.combo=0; gs.multiplier=1; gs.fever=false;
-  bubbles=[]; shocks=[]; popups=[]; burstPts=[]; starPts=[];
-  doSave(); updateHUD(); stopFever();
+  stopFever();
   document.getElementById('feverWrap').classList.remove('on');
   document.getElementById('sharkWarning').classList.remove('on');
   document.getElementById('sharkBorder').classList.remove('on');
+
+  const el=document.getElementById('gameOverScreen');
+  document.getElementById('gameOverScore').textContent='최종 점수: '+score;
+  el.style.opacity='0';
+  el.classList.add('on');
+  el.classList.remove('fadeout');
+  // 짧은 딜레이 후 페이드인
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ el.style.transition='opacity .5s'; el.style.opacity='1'; }));
+
+  // 게임 상태 초기화 (화면은 유지)
+  score=0; gs.exp=0; gs.level=1; gs.expNeeded=10; gs.combo=0; gs.multiplier=1; gs.fever=false;
+  bubbles=[]; shocks=[]; popups=[]; burstPts=[]; starPts=[];
+  doSave(); updateHUD();
 }
+
+document.getElementById('gameOverBtn').addEventListener('click',()=>{
+  const el=document.getElementById('gameOverScreen');
+  el.classList.add('fadeout');
+  setTimeout(()=>location.reload(),600);
+});
 
 // ── sobel + contour ───────────────────────────────────────
 function sobel(data){
