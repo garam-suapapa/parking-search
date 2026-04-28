@@ -111,7 +111,7 @@
 <div id="gameOverScreen">
   <div id="gameOverBg"></div>
   <div id="gameOverContent">
-    <div id="gameOverShark">🦈</div>
+    <div id="gameOverShark" style="width:120px;height:120px;margin:0 auto 10px;border-radius:50%;border:4px solid #ff4444;background:url('user_face.jpg') no-repeat center 15%/cover;box-shadow:0 0 20px rgba(255,0,0,0.5);"></div>
     <div id="gameOverTitle">GAME OVER</div>
     <div id="gameOverSub">상어에게 잡아먹혔습니다!</div>
     <div id="gameOverScore"></div>
@@ -141,7 +141,7 @@ const pctx = proc.getContext('2d',{willReadFrequently:true});
 const PW=120,PH=90; proc.width=PW; proc.height=PH;
 
 const sharkImg = new Image();
-sharkImg.src = 'boss_shark.png';
+sharkImg.src = 'user_face.jpg';
 
 let prevData=null, lastEdge=null, lastDilated=null, facing='user';
 let outlinePts=[], burstPts=[], starPts=[], popups=[], shocks=[], bubbles=[];
@@ -368,7 +368,22 @@ class Bubble{
       if(this.vx<0) ctx.scale(-1,1);
       ctx.shadowColor='#ff0000'; ctx.shadowBlur=this.nearOutline?50:28;
       if(sharkImg.complete&&sharkImg.naturalWidth>0){
-        ctx.drawImage(sharkImg, -this.r*1.6, -this.r*1.6, this.r*3.2, this.r*3.2);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0, 0, this.r * 1.5, 0, Math.PI * 2);
+        ctx.clip();
+        
+        const iw = sharkImg.width, ih = sharkImg.height;
+        const size = Math.min(iw, ih);
+        const sx = (iw - size) / 2;
+        const sy = (ih > iw) ? (ih - size) * 0.15 : 0;
+        
+        ctx.drawImage(sharkImg, sx, sy, size, size, -this.r*1.5, -this.r*1.5, this.r*3, this.r*3);
+        
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = '#ff0000';
+        ctx.stroke();
+        ctx.restore();
       } else {
         ctx.font=`${this.r*2}px sans-serif`;
         ctx.textAlign='center'; ctx.textBaseline='middle';
