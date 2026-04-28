@@ -51,6 +51,7 @@
   </style>
 </head>
 <body>
+<audio id="bgm" src="bgm-motion-1.mp3" loop></audio>
 <video id="video" autoplay playsinline muted></video>
 <canvas id="fx"></canvas>
 <div id="msg">카메라 권한을 허용해주세요 📷</div>
@@ -393,10 +394,11 @@ function startFever(){
   gs.fever=true; clearTimeout(gs.feverTO);
   document.getElementById('feverWrap').classList.add('on');
   snd('fever'); shakeAmt=9; flashAlpha=.28;
+  bgm.playbackRate=1.3;
   gs.feverTO=setTimeout(stopFever,5000);
   checkBadges();
 }
-function stopFever(){ gs.fever=false; document.getElementById('feverWrap').classList.remove('on'); }
+function stopFever(){ gs.fever=false; document.getElementById('feverWrap').classList.remove('on'); bgm.playbackRate=1.0; }
 
 // ── level up ──────────────────────────────────────────────
 function checkLevelUp(){
@@ -512,10 +514,13 @@ async function startCamera(){
 
 // ── UI ────────────────────────────────────────────────────
 document.getElementById('themeBtn').addEventListener('click',()=>{ TI=(TI+1)%THEMES.length; document.getElementById('themeBtn').textContent=THEMES[TI].name; outlinePts=[]; });
-document.getElementById('muteBtn').addEventListener('click',()=>{ muted=!muted; document.getElementById('muteBtn').textContent=muted?'🔇':'🔊'; });
+const bgm=document.getElementById('bgm');
+bgm.volume=0.4;
+function startBGM(){ bgm.play().catch(()=>{}); }
+document.getElementById('muteBtn').addEventListener('click',()=>{ muted=!muted; bgm.muted=muted; document.getElementById('muteBtn').textContent=muted?'🔇':'🔊'; });
 document.getElementById('camBtn').addEventListener('click',()=>{ facing=(facing==='user')?'environment':'user'; startCamera(); });
-canvas.addEventListener('touchstart',()=>ac(),{once:true,passive:true});
-canvas.addEventListener('click',()=>ac(),{once:true});
+canvas.addEventListener('touchstart',()=>{ ac(); startBGM(); },{once:true,passive:true});
+canvas.addEventListener('click',()=>{ ac(); startBGM(); },{once:true});
 
 function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
 window.addEventListener('resize',resize); resize();
