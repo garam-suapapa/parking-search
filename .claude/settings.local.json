@@ -25,7 +25,13 @@
       "Bash(start:*)",
       "Bash(git pull:*)",
       "Bash(git stash:*)",
-      "Bash(python -u telegram_bot.py)"
+      "Bash(python -u telegram_bot.py)",
+      "Bash(git restore *)",
+      "mcp__claude_ai_Notion__notion-fetch",
+      "mcp__claude_ai_Notion__notion-update-page",
+      "mcp__claude_ai_Notion__notion-update-data-source",
+      "Bash(bash \"C:/Users/white/.claude/statusline-command.sh\")",
+      "mcp__claude_ai_Notion__notion-search"
     ]
   }
 }
