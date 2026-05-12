@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>색깔 믹서</title>
+  <style>
+    :root {
+      --bg: #f8f7f4;
+      --surface: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --accent: #6366f1;
+      --accent-light: #eef2ff;
+      --radius-lg: 16px;
+      --radius-md: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.05);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px 16px 60px;
+    }
+    .app { max-width: 660px; margin: 0 auto; }
+
+    /* Header */
+    .app-header { text-align: center; padding: 28px 0 32px; }
+    .app-header h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.5px; }
+    .app-header p { margin-top: 8px; color: var(--muted); font-size: 0.9rem; }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+    }
+    .card-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* Count buttons */
+    .count-row { display: flex; align-items: center; gap: 10px; }
+    .count-row-label { font-size: 0.9rem; font-weight: 600; color: var(--text); margin-right: 4px; }
+    .count-btn {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      border: 2px solid var(--border);
+      background: transparent;
+      font-size: 1rem; font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      color: var(--muted);
+    }
+    .count-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .count-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+    .count-desc { font-size: 0.78rem; color: var(--muted); margin-left: 4px; }
+
+    /* Palette header */
+    .palette-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .selection-hint {
+      font-size: 0.78rem; font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-light);
+      padding: 3px 10px; border-radius: 20px;
+    }
+    .selection-hint.full { color: #dc2626; background: #fef2f2; }
+
+    /* Palette grid */
+    .palette {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+    }
+    .swatch-wrap {
+      position: relative;
+      aspect-ratio: 1;
+    }
+    .swatch {
+      width: 100%; height: 100%;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2.5px solid rgba(0,0,0,0.1);
+      transition: transform 0.15s, box-shadow 0.15s;
+      position: relative;
+    }
+    .swatch:hover { transform: scale(1.12); box-shadow: 0 4px 12px rgba(0,0,0,.18); }
+    .swatch.selected {
+      border-color: rgba(0,0,0,0.25);
+      box-shadow: 0 0 0 3px white, 0 0 0 5px var(--accent);
+      transform: scale(1.08);
+    }
+    .swatch.shake { animation: shake 0.35s ease; }
+    @keyframes shake {
+      0%,100% { transform: translateX(0) scale(1.08); }
+      20% { transform: translateX(-5px) scale(1.08); }
+      40% { transform: translateX(5px) scale(1.08); }
+      60% { transform: translateX(-3px) scale(1.08); }
+      80% { transform: translateX(3px) scale(1.08); }
+    }
+    .badge {
+      position: absolute; top: -3px; right: -3px;
+      width: 18px; height: 18px;
+      background: var(--accent); color: white;
+      border-radius: 50%;
+      font-size: 0.6rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid white;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .tooltip {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%; transform: translateX(-50%);
+      background: #1a1a1a; color: white;
+      font-size: 0.68rem; font-weight: 600;
+      padding: 3px 8px; border-radius: 6px;
+      white-space: nowrap;
+      pointer-events: none; opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 20;
+    }
+    .tooltip::after {
+      content: '';
+      position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      border: 4px solid transparent; border-top-color: #1a1a1a;
+    }
+    .swatch-wrap:hover .tooltip { opacity: 1; }
+
+    /* Result card */
+    .result-empty {
+      text-align: center; padding: 20px 0;
+      color: var(--muted); font-size: 0.88rem;
+    }
+    .result-empty .icon { font-size: 2rem; margin-bottom: 8px; }
+
+    .chips-row {
+      display: flex; align-items: center; gap: 8px;
+      flex-wrap: wrap; margin-bottom: 18px;
+    }
+    .chip {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--bg); border: 1.5px solid var(--border);
+      border-radius: 30px; padding: 5px 12px 5px 6px;
+      font-size: 0.8rem; font-weight: 600;
+    }
+    .chip-dot {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 1.5px solid rgba(0,0,0,0.1); flex-shrink: 0;
+    }
+    .plus { color: var(--muted); font-size: 1.1rem; font-weight: 300; line-height: 1; }
+
+    .divider {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 18px; color: var(--muted);
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .divider-label { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.5px; }
+
+    .result-display { display: flex; align-items: center; gap: 20px; }
+    .result-swatch {
+      width: 88px; height: 88px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(0,0,0,0.08);
+      flex-shrink: 0;
+      transition: background-color 0.35s ease;
+    }
+    .result-info { flex: 1; }
+    .result-name { font-size: 1.15rem; font-weight: 800; margin-bottom: 5px; }
+    .result-hex {
+      font-size: 0.85rem; color: var(--muted);
+      font-family: 'Courier New', monospace; letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .result-rgb { font-size: 0.78rem; color: var(--muted); font-family: 'Courier New', monospace; }
+
+    .reset-btn {
+      display: block; width: 100%; margin-top: 16px;
+      padding: 10px; background: transparent;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      color: var(--muted); font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .reset-btn:hover { border-color: #ef4444; color: #ef4444; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up { animation: fadeUp 0.25s ease forwards; }
+
+    /* Info note */
+    .algo-note {
+      text-align: center; font-size: 0.72rem; color: var(--muted);
+      margin-top: 8px; line-height: 1.5;
+    }
+
+    @media (max-width: 420px) {
+      .palette { grid-template-columns: repeat(6, 1fr); gap: 7px; }
+      .app-header h1 { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="app-header">
+    <h1>🎨 색깔 믹서</h1>
+    <p>색을 선택하고 섞으면 어떤 색이 나오는지 확인해보세요</p>
+  </header>
+
+  <!-- Settings -->
+  <div class="card">
+    <div class="card-title">선택 개수 설정</div>
+    <div class="count-row">
+      <span class="count-row-label">최대</span>
+      <div id="countBtns"></div>
+      <span class="count-desc">개까지 선택 가능</span>
+    </div>
+  </div>
+
+  <!-- Palette -->
+  <div class="card">
+    <div class="palette-header">
+      <div class="card-title" style="margin-bottom:0">색 팔레트 (24색)</div>
+      <span class="selection-hint" id="hint">0 / 2 선택</span>
+    </div>
+    <div class="palette" id="palette"></div>
+  </div>
+
+  <!-- Result -->
+  <div class="card" id="resultCard">
+    <div class="card-title">혼합 결과</div>
+    <div id="resultContent"></div>
+  </div>
+
+  <p class="algo-note">Oklab 지각 색공간 기반 혼합 — 빨강+하양=분홍, 노랑+파랑=초록 등 직관적인 결과를 제공합니다</p>
+</div>
+
+<script>
+// ─── Palette ────────────────────────────────────────────────────
+const PALETTE = [
+  { name: '빨강',    hex: '#E8221A' },
+  { name: '진홍',    hex: '#C40233' },
+  { name: '주황',    hex: '#FF6600' },
+  { name: '살구',    hex: '#FF9966' },
+  { name: '노랑',    hex: '#FFDB00' },
+  { name: '황금',    hex: '#FFB700' },
+  { name: '연두',    hex: '#8DB600' },
+  { name: '올리브',  hex: '#4B5320' },
+  { name: '초록',    hex: '#00A550' },
+  { name: '진초록',  hex: '#004D14' },
+  { name: '청록',    hex: '#008080' },
+  { name: '시안',    hex: '#00C8C8' },
+  { name: '하늘',    hex: '#5BA4CF' },
+  { name: '파랑',    hex: '#1C4DC8' },
+  { name: '남색',    hex: '#002FA7' },
+  { name: '인디고',  hex: '#4B0082' },
+  { name: '보라',    hex: '#7A29B4' },
+  { name: '자주',    hex: '#9C3587' },
+  { name: '분홍',    hex: '#FF69B4' },
+  { name: '자홍',    hex: '#E82899' },
+  { name: '갈색',    hex: '#8B4513' },
+  { name: '흰색',    hex: '#FFFFFF' },
+  { name: '회색',    hex: '#888888' },
+  { name: '검정',    hex: '#1A1A1A' },
+];
+
+// Extended list for result name matching
+const COLOR_NAMES = [
+  // ── Reds ──────────────────────────────────────────────────────
+  { name: '빨강',        hex: '#E8221A' },
+  { name: '진홍',        hex: '#C40233' },
+  { name: '적색',        hex: '#CC0000' },
+  { name: '진빨강',      hex: '#8B0000' },
+  { name: '버건디',      hex: '#800020' },
+  { name: '와인',        hex: '#722F37' },
+  { name: '체리',        hex: '#9B1B30' },
+  // ── Orange-Reds & Pinks ───────────────────────────────────────
+  { name: '산호빨강',    hex: '#FF4040' },
+  { name: '산호색',      hex: '#FF6B6B' },
+  { name: '연빨강',      hex: '#FF7070' },
+  { name: '살몬',        hex: '#FA8072' },
+  { name: '연어색',      hex: '#FF8C69' },
+  { name: '파스텔빨강',  hex: '#FF9999' },
+  { name: '핫핑크',      hex: '#FF1493' },
+  { name: '자홍',        hex: '#E82899' },
+  { name: '분홍',        hex: '#FF69B4' },
+  { name: '로즈핑크',    hex: '#FF66AA' },
+  { name: '연분홍',      hex: '#FFB6C1' },
+  { name: '베이비핑크',  hex: '#F4C2C2' },
+  { name: '파스텔핑크',  hex: '#FFD1DC' },
+  // ── Oranges ───────────────────────────────────────────────────
+  { name: '주황',        hex: '#FF6600' },
+  { name: '진주황',      hex: '#E05000' },
+  { name: '귤색',        hex: '#FF8C00' },
+  { name: '호박색',      hex: '#FF7518' },
+  { name: '살구',        hex: '#FF9966' },
+  { name: '복숭아색',    hex: '#FFCBA4' },
+  // ── Yellows ───────────────────────────────────────────────────
+  { name: '노랑',        hex: '#FFDB00' },
+  { name: '황금',        hex: '#FFB700' },
+  { name: '겨자색',      hex: '#CCAA00' },
+  { name: '황토색',      hex: '#CC7722' },
+  { name: '레몬색',      hex: '#FFF44F' },
+  { name: '연노랑',      hex: '#FFFF99' },
+  { name: '크림',        hex: '#FFFACD' },
+  { name: '아이보리',    hex: '#FFFFF0' },
+  { name: '베이지',      hex: '#F5DEB3' },
+  { name: '모래색',      hex: '#E8D5B7' },
+  // ── Yellow-Greens ─────────────────────────────────────────────
+  { name: '연두',        hex: '#8DB600' },
+  { name: '황록색',      hex: '#9CAF00' },
+  { name: '라임',        hex: '#32CD32' },
+  { name: '연초록',      hex: '#90EE90' },
+  { name: '파스텔초록',  hex: '#77DD77' },
+  // ── Greens ────────────────────────────────────────────────────
+  { name: '초록',        hex: '#00A550' },
+  { name: '진초록',      hex: '#004D14' },
+  { name: '올리브',      hex: '#4B5320' },
+  { name: '숲색',        hex: '#228B22' },
+  { name: '에메랄드',    hex: '#50C878' },
+  { name: '민트색',      hex: '#9EFFD3' },
+  // ── Cyans ─────────────────────────────────────────────────────
+  { name: '청록',        hex: '#008080' },
+  { name: '시안',        hex: '#00C8C8' },
+  { name: '하늘색',      hex: '#87CEEB' },
+  // ── Blues ─────────────────────────────────────────────────────
+  { name: '연하늘',      hex: '#B0E0FF' },
+  { name: '연파랑',      hex: '#ADD8E6' },
+  { name: '하늘',        hex: '#5BA4CF' },
+  { name: '파랑',        hex: '#1C4DC8' },
+  { name: '남색',        hex: '#002FA7' },
+  { name: '군청색',      hex: '#003366' },
+  // ── Purples ───────────────────────────────────────────────────
+  { name: '인디고',      hex: '#4B0082' },
+  { name: '짙은보라',    hex: '#4A0080' },
+  { name: '보라',        hex: '#7A29B4' },
+  { name: '자주',        hex: '#9C3587' },
+  { name: '진자주',      hex: '#660033' },
+  { name: '라벤더',      hex: '#D8B4FE' },
+  { name: '연보라',      hex: '#DDA0DD' },
+  { name: '라일락',      hex: '#C8A2C8' },
+  // ── Browns ────────────────────────────────────────────────────
+  { name: '갈색',        hex: '#8B4513' },
+  { name: '밤색',        hex: '#7B3F00' },
+  { name: '모카색',      hex: '#A0522D' },
+  { name: '카키색',      hex: '#78684A' },
+  { name: '고동색',      hex: '#5C2E00' },
+  { name: '적갈색',      hex: '#9B2335' },
+  // ── Skin tones ────────────────────────────────────────────────
+  { name: '살색',        hex: '#FDBCB4' },
+  { name: '피부색',      hex: '#FFD0B0' },
+  // ── Grays / Neutrals ──────────────────────────────────────────
+  { name: '흰색',        hex: '#FFFFFF' },
+  { name: '은색',        hex: '#C0C0C0' },
+  { name: '회색',        hex: '#888888' },
+  { name: '진회색',      hex: '#404040' },
+  { name: '청회색',      hex: '#708090' },
+  { name: '검정',        hex: '#1A1A1A' },
+];
+
+// ─── Color math ─────────────────────────────────────────────────
+function hexToRgb(hex) {
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16),
+  };
+}
+
+function rgbToHex({ r, g, b }) {
+  return '#' + [r, g, b]
+    .map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function srgbToLinear(c) {
+  c /= 255;
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+
+function linearToSrgb(c) {
+  if (c <= 0) return 0;
+  if (c >= 1) return 1;
+  return c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+}
+
+// Oklab inverse: [L,a,b] → linear sRGB {r,g,b} clamped 0-1
+function oklabToLinear(L, a, b) {
+  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+  const l = l_ * l_ * l_;
+  const m = m_ * m_ * m_;
+  const s = s_ * s_ * s_;
+  return {
+    r: Math.max(0, Math.min(1,  4.0767416621*l - 3.3077115913*m + 0.2309699292*s)),
+    g: Math.max(0, Math.min(1, -1.2684380046*l + 2.6097574011*m - 0.3413193965*s)),
+    b: Math.max(0, Math.min(1, -0.0041960863*l - 0.7034186147*m + 1.7076147010*s)),
+  };
+}
+
+// Mix colors by averaging in Oklab perceptual space
+function mixColors(hexList) {
+  if (!hexList.length) return null;
+  if (hexList.length === 1) return { ...hexToRgb(hexList[0]), hex: hexList[0] };
+
+  const labs = hexList.map(h => {
+    const { r, g, b } = hexToRgb(h);
+    return toOklab(r, g, b);
+  });
+
+  const n = labs.length;
+  const L = labs.reduce((s, c) => s + c[0], 0) / n;
+  const a = labs.reduce((s, c) => s + c[1], 0) / n;
+  const b = labs.reduce((s, c) => s + c[2], 0) / n;
+
+  const lin = oklabToLinear(L, a, b);
+  const r = Math.round(linearToSrgb(lin.r) * 255);
+  const g = Math.round(linearToSrgb(lin.g) * 255);
+  const bOut = Math.round(linearToSrgb(lin.b) * 255);
+
+  return { r, g, b: bOut, hex: rgbToHex({ r, g, b: bOut }) };
+}
+
+// Oklab for perceptual distance
+function toOklab(r, g, b) {
+  const rL = srgbToLinear(r), gL = srgbToLinear(g), bL = srgbToLinear(b);
+  const l_ = Math.cbrt(0.4122214708 * rL + 0.5363325363 * gL + 0.0514459929 * bL);
+  const m_ = Math.cbrt(0.2119034982 * rL + 0.6806995451 * gL + 0.1073969566 * bL);
+  const s_ = Math.cbrt(0.0883024619 * rL + 0.2817188376 * gL + 0.6299787005 * bL);
+  return [
+    0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
+    1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
+    0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_,
+  ];
+}
+
+function labDist(a, b) {
+  return Math.sqrt(a.reduce((s, v, i) => s + (v - b[i]) ** 2, 0));
+}
+
+function findColorName(hex) {
+  const { r, g, b } = hexToRgb(hex);
+  const lab = toOklab(r, g, b);
+  let best = COLOR_NAMES[0], bestD = Infinity;
+  for (const c of COLOR_NAMES) {
+    const { r: cr, g: cg, b: cb } = hexToRgb(c.hex);
+    const d = labDist(lab, toOklab(cr, cg, cb));
+    if (d < bestD) { bestD = d; best = c; }
+  }
+  return best.name;
+}
+
+function isLight(r, g, b) {
+  return 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b) > 0.35;
+}
+
+// ─── Recipe overrides (color_mixing.md 기준) ─────────────────────
+function sortedKey(hexList) {
+  return hexList.map(h => h.toUpperCase()).sort().join('+');
+}
+
+const RECIPES = {
+  [sortedKey(['#FFDB00', '#E8221A'])]: { name: '주황색', hex: '#FF6600' }, // 노랑+빨강
+  [sortedKey(['#FFFFFF', '#E8221A'])]: { name: '분홍색', hex: '#FF69B4' }, // 하양+빨강
+  [sortedKey(['#E8221A', '#1A1A1A'])]: { name: '고동색', hex: '#5C2E00' }, // 빨강+검정
+  [sortedKey(['#FFDB00', '#00A550'])]: { name: '연두색', hex: '#8DB600' }, // 노랑+초록
+  [sortedKey(['#E8221A', '#1C4DC8'])]: { name: '보라색', hex: '#7A29B4' }, // 빨강+파랑
+  [sortedKey(['#FFDB00', '#1C4DC8'])]: { name: '초록색', hex: '#00A550' }, // 노랑+파랑
+  [sortedKey(['#FFFFFF', '#1C4DC8'])]: { name: '하늘색', hex: '#87CEEB' }, // 하양+파랑
+  [sortedKey(['#FF6600', '#FFFFFF'])]: { name: '살색',   hex: '#FDBCB4' }, // 주황+하양
+  [sortedKey(['#FF6600', '#1A1A1A'])]: { name: '밤색',   hex: '#7B3F00' }, // 주황+검정
+};
+
+// ─── State ──────────────────────────────────────────────────────
+let maxCount = 2;
+let selected = []; // array of hex strings in selection order
+
+// ─── Render ─────────────────────────────────────────────────────
+function renderCountBtns() {
+  const el = document.getElementById('countBtns');
+  el.innerHTML = '';
+  for (let i = 2; i <= 5; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'count-btn' + (i === maxCount ? ' active' : '');
+    btn.textContent = i;
+    btn.onclick = () => {
+      maxCount = i;
+      if (selected.length > maxCount) selected = selected.slice(0, maxCount);
+      renderCountBtns();
+      renderPalette();
+      renderResult();
+    };
+    el.appendChild(btn);
+  }
+}
+
+function renderPalette() {
+  const hint = document.getElementById('hint');
+  const full = selected.length >= maxCount;
+  hint.textContent = `${selected.length} / ${maxCount} 선택`;
+  hint.className = 'selection-hint' + (full ? ' full' : '');
+
+  const palette = document.getElementById('palette');
+  palette.innerHTML = '';
+
+  for (const color of PALETTE) {
+    const wrap = document.createElement('div');
+    wrap.className = 'swatch-wrap';
+
+    const swatch = document.createElement('div');
+    swatch.className = 'swatch';
+    swatch.style.backgroundColor = color.hex;
+
+    const idx = selected.indexOf(color.hex);
+    if (idx !== -1) {
+      swatch.classList.add('selected');
+      const badge = document.createElement('div');
+      badge.className = 'badge';
+      badge.textContent = idx + 1;
+      swatch.appendChild(badge);
+    }
+
+    const tip = document.createElement('div');
+    tip.className = 'tooltip';
+    tip.textContent = color.name;
+    wrap.appendChild(swatch);
+    wrap.appendChild(tip);
+
+    swatch.onclick = () => {
+      const i = selected.indexOf(color.hex);
+      if (i !== -1) {
+        selected = selected.filter((_, j) => j !== i);
+      } else if (selected.length < maxCount) {
+        selected = [...selected, color.hex];
+      } else {
+        swatch.classList.add('shake');
+        swatch.addEventListener('animationend', () => swatch.classList.remove('shake'), { once: true });
+        return;
+      }
+      renderPalette();
+      renderResult();
+    };
+
+    palette.appendChild(wrap);
+  }
+}
+
+function renderResult() {
+  const el = document.getElementById('resultContent');
+
+  if (selected.length === 0) {
+    el.innerHTML = `<div class="result-empty"><div class="icon">🎨</div>팔레트에서 색을 선택해보세요</div>`;
+    return;
+  }
+
+  if (selected.length === 1) {
+    const name = PALETTE.find(c => c.hex === selected[0])?.name ?? '';
+    el.innerHTML = `
+      <div class="chips-row fade-up">${chip(selected[0], name)}</div>
+      <div class="result-empty" style="padding:8px 0 4px">색을 하나 더 선택하면 섞인 결과를 볼 수 있어요</div>
+    `;
+    return;
+  }
+
+  const chipsHtml = selected.map((hex, i) => {
+    const name = PALETTE.find(c => c.hex === hex)?.name ?? '';
+    return (i > 0 ? '<span class="plus">+</span>' : '') + chip(hex, name);
+  }).join('');
+
+  const recipe = selected.length === 2 ? RECIPES[sortedKey(selected)] : null;
+  const mixed = mixColors(selected);
+  const resultHex = recipe ? recipe.hex : mixed.hex;
+  const resultName = recipe ? recipe.name : findColorName(mixed.hex);
+  const { r: dr, g: dg, b: db } = hexToRgb(resultHex);
+
+  el.innerHTML = `
+    <div class="chips-row fade-up">${chipsHtml}</div>
+    <div class="divider"><span class="divider-label">섞으면?</span></div>
+    <div class="result-display fade-up">
+      <div class="result-swatch" style="background:${resultHex}"></div>
+      <div class="result-info">
+        <div class="result-name">${resultName}</div>
+        <div class="result-hex">${resultHex.toUpperCase()}</div>
+        <div class="result-rgb">rgb(${dr}, ${dg}, ${db})</div>
+      </div>
+    </div>
+    <button class="reset-btn" onclick="reset()">↺ 초기화</button>
+  `;
+}
+
+function chip(hex, name) {
+  return `<div class="chip"><div class="chip-dot" style="background:${hex}"></div>${name}</div>`;
+}
+
+function reset() {
+  selected = [];
+  renderPalette();
+  renderResult();
+}
+
+// ─── Init ────────────────────────────────────────────────────────
+renderCountBtns();
+renderPalette();
+renderResult();
+</script>
+</body>
+</html>
